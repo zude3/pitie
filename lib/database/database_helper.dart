@@ -69,12 +69,7 @@ class DatabaseHelper {
           await _migrateLegacyFinancialEntries(database);
         }
         if (oldVersion < 5) {
-          await _ensureColumn(
-            database,
-            'transactions',
-            'debt_id',
-            'INTEGER',
-          );
+          await _ensureColumn(database, 'transactions', 'debt_id', 'INTEGER');
           await _ensureColumn(
             database,
             'transactions',
@@ -267,11 +262,11 @@ class DatabaseHelper {
         _ => null,
       };
       if (openingDescription != null) {
-        await database.update(
-          'transactions',
-          {'debt_id': debtId},
-          where: 'description = ? AND date = ? AND debt_id IS NULL',
-          whereArgs: [openingDescription, debt['date']],
+        await _linkFirstDebtTransaction(
+          database,
+          debtId,
+          openingDescription,
+          debt['date'] as String,
         );
       }
       if (debt['is_paid'] == 1) {
@@ -280,11 +275,11 @@ class DatabaseHelper {
           'receivable' => 'Pelunasan piutang: $recipient',
           _ => 'Pelunasan hutang: $recipient',
         };
-        await database.update(
-          'transactions',
-          {'debt_id': debtId},
-          where: 'description = ? AND debt_id IS NULL',
-          whereArgs: [repaymentDescription],
+        await _linkFirstDebtTransaction(
+          database,
+          debtId,
+          repaymentDescription,
+          debt['paid_at'] as String? ?? debt['date'] as String,
         );
       }
     }
@@ -298,6 +293,29 @@ class DatabaseHelper {
         whereArgs: ['Setoran tabungan: ${goal['name']}', 'main'],
       );
     }
+  }
+
+  Future<void> _linkFirstDebtTransaction(
+    DatabaseExecutor database,
+    int debtId,
+    String description,
+    String date,
+  ) async {
+    final rows = await database.query(
+      'transactions',
+      columns: ['id'],
+      where: 'description = ? AND date = ? AND debt_id IS NULL',
+      whereArgs: [description, date],
+      orderBy: 'id ASC',
+      limit: 1,
+    );
+    if (rows.isEmpty) return;
+    await database.update(
+      'transactions',
+      {'debt_id': debtId},
+      where: 'id = ?',
+      whereArgs: [rows.first['id']],
+    );
   }
 
   Future<int> insertDebt(
@@ -414,7 +432,7 @@ class DatabaseHelper {
   Future<void> recordSavingsUse(
     int goalId,
     double amount,
-    String purpose,
+    String category,
     DateTime date,
   ) async {
     final database = await initDatabase();
@@ -440,14 +458,14 @@ class DatabaseHelper {
       await transaction.insert('financial_activities', {
         'kind': 'savings_use',
         'amount': amount,
-        'title': purpose,
+        'title': category,
         'date': date.toIso8601String(),
       });
       await transaction.insert('transactions', {
         'type': 'expense',
         'amount': amount,
-        'category': 'Penggunaan tabungan',
-        'description': purpose,
+        'category': category,
+        'description': 'Pemakaian tabungan: $category',
         'date': date.toIso8601String(),
         'account': 'savings',
         'savings_goal_id': goalId,
@@ -458,9 +476,11 @@ class DatabaseHelper {
   Future<int> clearDebts() async {
     final database = await initDatabase();
     return database.transaction((transaction) async {
+      await transaction.delete('transactions', where: 'debt_id IS NOT NULL');
       await transaction.delete(
-        'transactions',
-        where: 'debt_id IS NOT NULL',
+        'financial_activities',
+        where: 'kind = ?',
+        whereArgs: ['debt_repayment'],
       );
       return transaction.delete('debts');
     });

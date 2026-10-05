@@ -116,17 +116,22 @@ class TransactionStore extends ChangeNotifier {
   Future<void> useSavings(
     SavingsGoalModel goal,
     double amount,
-    String purpose,
+    String category,
     DateTime date,
   ) async {
     if (goal.id == null) throw ArgumentError('Savings goal id is required.');
     if (!amount.isFinite || amount <= 0 || amount > goal.savedAmount) {
       throw ArgumentError('Savings amount is invalid or insufficient.');
     }
-    if (purpose.trim().isEmpty) {
-      throw ArgumentError('Savings use purpose is required.');
+    if (category.trim().isEmpty) {
+      throw ArgumentError('Savings use category is required.');
     }
-    await _database.recordSavingsUse(goal.id!, amount, purpose.trim(), date);
+    await _database.recordSavingsUse(goal.id!, amount, category.trim(), date);
+    await refresh();
+  }
+
+  Future<void> clearDebts() async {
+    await _database.clearDebts();
     await refresh();
   }
 }

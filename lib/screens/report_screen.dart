@@ -118,10 +118,18 @@ class _ReportScreenState extends State<ReportScreen> {
               )
               .toList();
     final expenses = transactions
-        .where((item) => item.type == TransactionType.expense)
+        .where(
+          (item) =>
+              item.type == TransactionType.expense &&
+              item.account == TransactionAccount.main,
+        )
         .toList();
     final income = transactions
-        .where((item) => item.type == TransactionType.income)
+        .where(
+          (item) =>
+              item.type == TransactionType.income &&
+              item.account == TransactionAccount.main,
+        )
         .fold<double>(0, (sum, item) => sum + item.amount);
     final expenseTotal = expenses.fold<double>(
       0,
@@ -134,6 +142,7 @@ class _ReportScreenState extends State<ReportScreen> {
           .where(
             (transaction) =>
                 transaction.type == TransactionType.expense &&
+                transaction.account == TransactionAccount.main &&
                 !transaction.date.isBefore(day) &&
                 transaction.date.isBefore(nextDay),
           )

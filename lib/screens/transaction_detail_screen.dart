@@ -50,6 +50,7 @@ class TransactionDetailScreen extends StatelessWidget {
       orElse: () => transaction,
     );
     final isIncome = current.type == TransactionType.income;
+    final isLinked = current.debtId != null || current.savingsGoalId != null;
     return Scaffold(
       appBar: AppBar(title: const Text('Transaction Detail')),
       body: ListView(
@@ -103,31 +104,38 @@ class TransactionDetailScreen extends StatelessWidget {
                 '${current.date.day}/${current.date.month}/${current.date.year}',
           ),
           const SizedBox(height: 24),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) =>
-                          EditTransactionScreen(transaction: current),
+          if (isLinked)
+            const Text(
+              'Aktivitas ini dikelola dari catatan hutang atau target tabungan.',
+              style: TextStyle(color: Color(0xFF8B91A4), fontSize: 11),
+              textAlign: TextAlign.center,
+            )
+          else
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) =>
+                            EditTransactionScreen(transaction: current),
+                      ),
                     ),
+                    icon: const Icon(Icons.edit_outlined),
+                    label: const Text('Edit'),
                   ),
-                  icon: const Icon(Icons.edit_outlined),
-                  label: const Text('Edit'),
                 ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: FilledButton.icon(
-                  onPressed: () => delete(context),
-                  icon: const Icon(Icons.delete_outline),
-                  label: const Text('Delete'),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: FilledButton.icon(
+                    onPressed: () => delete(context),
+                    icon: const Icon(Icons.delete_outline),
+                    label: const Text('Delete'),
+                  ),
                 ),
-              ),
-            ],
-          ),
+              ],
+            ),
         ],
       ),
     );

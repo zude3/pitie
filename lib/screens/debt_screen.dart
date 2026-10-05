@@ -2,14 +2,40 @@ import 'package:flutter/material.dart';
 
 import '../data/transaction_store.dart';
 import '../models/debt_model.dart';
+import 'transaction_detail_screen.dart';
 
-class DebtScreen extends StatelessWidget {
+enum _DebtPeriod { all, today, thisWeek, thisMonth }
+
+class DebtScreen extends StatefulWidget {
   const DebtScreen({super.key});
+
+  @override
+  State<DebtScreen> createState() => _DebtScreenState();
+}
+
+class _DebtScreenState extends State<DebtScreen> {
+  String _query = '';
+  DebtType? _type;
+  _DebtPeriod _period = _DebtPeriod.all;
 
   @override
   Widget build(BuildContext context) {
     final store = PitieScope.of(context);
-    final unpaid = store.debts.where((debt) => !debt.isPaid).toList();
+    final range = _selectedRange();
+    final query = _query.trim().toLowerCase();
+    final debts = store.debts.where((debt) {
+      if (_type != null && debt.type != _type) return false;
+      if (range != null &&
+          (debt.date.isBefore(range.start) || !debt.date.isBefore(range.end))) {
+        return false;
+      }
+      return query.isEmpty ||
+          debt.recipient.toLowerCase().contains(query) ||
+          debt.note.toLowerCase().contains(query) ||
+          debt.type.label.toLowerCase().contains(query) ||
+          debt.amount.toString().contains(query);
+    }).toList();
+    final unpaid = debts.where((debt) => !debt.isPaid).toList();
     final total = unpaid.fold<double>(0, (sum, debt) => sum + debt.amount);
     return ListView(
       padding: const EdgeInsets.fromLTRB(24, 20, 24, 96),
@@ -26,26 +52,246 @@ class DebtScreen extends StatelessWidget {
         const SizedBox(height: 18),
         _DebtSummary(total: total, count: unpaid.length),
         const SizedBox(height: 22),
-        const Text(
-          'Daftar hutang',
-          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800),
+        Row(
+          children: [
+            const Expanded(
+              child: Text(
+                'Daftar hutang',
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800),
+              ),
+            ),
+            if (store.debts.isNotEmpty)
+              IconButton(
+                onPressed: () => _confirmClear(context, store),
+                tooltip: 'Hapus semua catatan hutang',
+                icon: const Icon(Icons.delete_sweep_outlined),
+              ),
+          ],
         ),
         const SizedBox(height: 10),
-        if (store.debts.isEmpty)
+        TextField(
+          decoration: const InputDecoration(
+            prefixIcon: Icon(Icons.search),
+            hintText: 'Cari hutang',
+            border: OutlineInputBorder(),
+            isDense: true,
+          ),
+          onChanged: (value) => setState(() => _query = value),
+        ),
+        const SizedBox(height: 10),
+        Row(
+          children: [
+            Expanded(
+              child: DropdownButtonFormField<DebtType?>(
+                initialValue: _type,
+                decoration: const InputDecoration(
+                  labelText: 'Jenis',
+                  border: OutlineInputBorder(),
+                  isDense: true,
+                ),
+                items: [
+                  const DropdownMenuItem<DebtType?>(
+                    value: null,
+                    child: Text('Semua jenis'),
+                  ),
+                  ...DebtType.values.map(
+                    (type) => DropdownMenuItem<DebtType?>(
+                      value: type,
+                      child: Text(type.label),
+                    ),
+                  ),
+                ],
+                onChanged: (value) => setState(() => _type = value),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: DropdownButtonFormField<_DebtPeriod>(
+                initialValue: _period,
+                decoration: const InputDecoration(
+                  labelText: 'Periode',
+                  border: OutlineInputBorder(),
+                  isDense: true,
+                ),
+                items: const [
+                  DropdownMenuItem(
+                    value: _DebtPeriod.all,
+                    child: Text('Semua'),
+                  ),
+                  DropdownMenuItem(
+                    value: _DebtPeriod.today,
+                    child: Text('Hari ini'),
+                  ),
+                  DropdownMenuItem(
+                    value: _DebtPeriod.thisWeek,
+                    child: Text('Minggu ini'),
+                  ),
+                  DropdownMenuItem(
+                    value: _DebtPeriod.thisMonth,
+                    child: Text('Bulan ini'),
+                  ),
+                ],
+                onChanged: (value) {
+                  if (value != null) setState(() => _period = value);
+                },
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        if (debts.isEmpty)
           const _EmptyState(
             icon: Icons.receipt_long_outlined,
-            title: 'Belum ada catatan hutang',
-            message: 'Tambahkan catatan pertama lewat tombol +.',
+            title: 'Hutang tidak ditemukan',
+            message: 'Ubah filter atau tambahkan catatan baru.',
           )
         else
-          ...store.debts.map(
+          ...debts.map(
             (debt) => _DebtItem(
               debt: debt,
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => DebtDetailScreen(debt: debt)),
+              ),
               onRepay: () => _confirmRepayment(context, store, debt),
             ),
           ),
       ],
     );
+  }
+
+  DateTimeRange? _selectedRange() {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    return switch (_period) {
+      _DebtPeriod.all => null,
+      _DebtPeriod.today => DateTimeRange(
+        start: today,
+        end: today.add(const Duration(days: 1)),
+      ),
+      _DebtPeriod.thisWeek => DateTimeRange(
+        start: today.subtract(Duration(days: today.weekday - 1)),
+        end: today
+            .subtract(Duration(days: today.weekday - 1))
+            .add(const Duration(days: 7)),
+      ),
+      _DebtPeriod.thisMonth => DateTimeRange(
+        start: DateTime(now.year, now.month),
+        end: DateTime(now.year, now.month + 1),
+      ),
+    };
+  }
+}
+
+class DebtDetailScreen extends StatelessWidget {
+  const DebtDetailScreen({required this.debt, super.key});
+  final DebtModel debt;
+
+  @override
+  Widget build(BuildContext context) {
+    final store = PitieScope.of(context);
+    final history =
+        store.transactions
+            .where((transaction) => transaction.debtId == debt.id)
+            .toList()
+          ..sort((first, second) => second.date.compareTo(first.date));
+    return Scaffold(
+      appBar: AppBar(title: Text(debt.type.label)),
+      body: ListView(
+        padding: const EdgeInsets.fromLTRB(24, 12, 24, 32),
+        children: [
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xFFE7E8F0)),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    debt.recipient,
+                    style: const TextStyle(fontWeight: FontWeight.w800),
+                  ),
+                ),
+                Text('\$${debt.amount.toStringAsFixed(2)}'),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+          _DebtDetailRow(label: 'Penerima', value: debt.recipient),
+          _DebtDetailRow(label: 'Tanggal mulai', value: _formatDate(debt.date)),
+          _DebtDetailRow(
+            label: 'Tenggat',
+            value: debt.dueDate == null
+                ? 'Tidak ditentukan'
+                : _formatDate(debt.dueDate!),
+          ),
+          _DebtDetailRow(label: 'Status', value: debt.status),
+          if (debt.note.isNotEmpty)
+            _DebtDetailRow(label: 'Catatan', value: debt.note),
+          const SizedBox(height: 18),
+          const Text(
+            'Riwayat transaksi',
+            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800),
+          ),
+          const SizedBox(height: 8),
+          if (history.isEmpty)
+            const Text(
+              'Belum ada perpindahan saldo untuk catatan ini.',
+              style: TextStyle(color: Color(0xFF8B91A4), fontSize: 11),
+            ),
+          ...history.map(
+            (transaction) => ListTile(
+              contentPadding: EdgeInsets.zero,
+              title: Text(transaction.description),
+              subtitle: Text(_formatDate(transaction.date)),
+              trailing: Text('\$${transaction.amount.toStringAsFixed(2)}'),
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) =>
+                      TransactionDetailScreen(transaction: transaction),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+Future<void> _confirmClear(BuildContext context, TransactionStore store) async {
+  final confirmed = await showDialog<bool>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: const Text('Hapus semua catatan hutang?'),
+      content: const Text(
+        'Catatan dan transaksi terkait akan dihapus. Saldo akan dihitung ulang.',
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context, false),
+          child: const Text('Batal'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.pop(context, true),
+          child: const Text('Hapus semua'),
+        ),
+      ],
+    ),
+  );
+  if (confirmed != true || !context.mounted) return;
+  try {
+    await store.clearDebts();
+  } catch (_) {
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Daftar hutang gagal dihapus.')),
+      );
+    }
   }
 }
 
@@ -271,88 +517,129 @@ class _DebtSummary extends StatelessWidget {
 }
 
 class _DebtItem extends StatelessWidget {
-  const _DebtItem({required this.debt, required this.onRepay});
+  const _DebtItem({
+    required this.debt,
+    required this.onTap,
+    required this.onRepay,
+  });
   final DebtModel debt;
+  final VoidCallback onTap;
   final VoidCallback onRepay;
 
   @override
-  Widget build(BuildContext context) => Container(
-    margin: const EdgeInsets.only(bottom: 10),
-    padding: const EdgeInsets.all(12),
-    decoration: BoxDecoration(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(11),
-      border: Border.all(color: const Color(0xFFE7E8F0)),
-    ),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Expanded(
-              child: Text(
-                debt.recipient,
-                style: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
+  Widget build(BuildContext context) => InkWell(
+    onTap: onTap,
+    borderRadius: BorderRadius.circular(11),
+    child: Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(11),
+        border: Border.all(color: const Color(0xFFE7E8F0)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  debt.recipient,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              Text(
+                '\$${debt.amount.toStringAsFixed(2)}',
+                style: TextStyle(
+                  color: debt.isPaid
+                      ? const Color(0xFF8B91A4)
+                      : const Color(0xFFE36A4A),
+                  fontSize: 11,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Wrap(
+            spacing: 6,
+            runSpacing: 4,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              _DebtStatusLabel(debt: debt),
+              Text(
+                debt.type.label,
+                style: const TextStyle(color: Color(0xFF687183), fontSize: 9),
+              ),
+              Text(
+                'Mulai ${_formatDate(debt.date)}',
+                style: const TextStyle(color: Color(0xFF8B91A4), fontSize: 9),
+              ),
+              if (debt.dueDate != null)
+                Text(
+                  'Tenggat ${_formatDate(debt.dueDate!)}',
+                  style: const TextStyle(color: Color(0xFF8B91A4), fontSize: 9),
+                ),
+            ],
+          ),
+          if (debt.note.isNotEmpty) ...[
+            const SizedBox(height: 5),
+            Text(
+              debt.note,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(color: Color(0xFF687183), fontSize: 10),
+            ),
+          ],
+          if (!debt.isPaid) ...[
+            const SizedBox(height: 8),
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton.icon(
+                onPressed: onRepay,
+                icon: const Icon(Icons.check_circle_outline, size: 16),
+                label: const Text('Lunasi'),
+                style: TextButton.styleFrom(
+                  visualDensity: VisualDensity.compact,
                 ),
               ),
             ),
-            Text(
-              '\$${debt.amount.toStringAsFixed(2)}',
-              style: TextStyle(
-                color: debt.isPaid
-                    ? const Color(0xFF8B91A4)
-                    : const Color(0xFFE36A4A),
-                fontSize: 11,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
           ],
-        ),
-        const SizedBox(height: 6),
-        Wrap(
-          spacing: 6,
-          runSpacing: 4,
-          crossAxisAlignment: WrapCrossAlignment.center,
-          children: [
-            _DebtStatusLabel(debt: debt),
-            Text(
-              debt.type.label,
-              style: const TextStyle(color: Color(0xFF687183), fontSize: 9),
-            ),
-            Text(
-              'Mulai ${_formatDate(debt.date)}',
-              style: const TextStyle(color: Color(0xFF8B91A4), fontSize: 9),
-            ),
-            if (debt.dueDate != null)
-              Text(
-                'Tenggat ${_formatDate(debt.dueDate!)}',
-                style: const TextStyle(color: Color(0xFF8B91A4), fontSize: 9),
-              ),
-          ],
-        ),
-        if (debt.note.isNotEmpty) ...[
-          const SizedBox(height: 5),
-          Text(
-            debt.note,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(color: Color(0xFF687183), fontSize: 10),
-          ),
         ],
-        if (!debt.isPaid) ...[
-          const SizedBox(height: 8),
-          Align(
-            alignment: Alignment.centerRight,
-            child: TextButton.icon(
-              onPressed: onRepay,
-              icon: const Icon(Icons.check_circle_outline, size: 16),
-              label: const Text('Lunasi'),
-              style: TextButton.styleFrom(visualDensity: VisualDensity.compact),
-            ),
+      ),
+    ),
+  );
+}
+
+class _DebtDetailRow extends StatelessWidget {
+  const _DebtDetailRow({required this.label, required this.value});
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(bottom: 12),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: 110,
+          child: Text(
+            label,
+            style: const TextStyle(color: Color(0xFF8B91A4), fontSize: 11),
           ),
-        ],
+        ),
+        Expanded(
+          child: Text(
+            value,
+            textAlign: TextAlign.end,
+            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700),
+          ),
+        ),
       ],
     ),
   );

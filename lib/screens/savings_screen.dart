@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 
 import '../data/transaction_store.dart';
+import '../models/category_model.dart';
 import '../models/savings_goal_model.dart';
+import '../models/transaction_model.dart';
+import 'transaction_detail_screen.dart';
 
 class SavingsScreen extends StatelessWidget {
   const SavingsScreen({super.key});
@@ -74,6 +77,12 @@ class SavingsScreen extends StatelessWidget {
           ...store.savingsGoals.map(
             (goal) => _SavingsGoalCard(
               goal: goal,
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => SavingsGoalDetailScreen(goal: goal),
+                ),
+              ),
               onAdd: () => Navigator.push(
                 context,
                 MaterialPageRoute(
@@ -254,6 +263,73 @@ class _AddSavingsAmountScreenState extends State<AddSavingsAmountScreen> {
   );
 }
 
+class SavingsGoalDetailScreen extends StatelessWidget {
+  const SavingsGoalDetailScreen({required this.goal, super.key});
+  final SavingsGoalModel goal;
+
+  @override
+  Widget build(BuildContext context) {
+    final store = PitieScope.of(context);
+    final current = store.savingsGoals.firstWhere(
+      (item) => item.id == goal.id,
+      orElse: () => goal,
+    );
+    final history =
+        store.transactions
+            .where((transaction) => transaction.savingsGoalId == current.id)
+            .toList()
+          ..sort((first, second) => second.date.compareTo(first.date));
+    final progress = current.targetAmount == 0
+        ? 0.0
+        : (current.savedAmount / current.targetAmount).clamp(0.0, 1.0);
+    return Scaffold(
+      appBar: AppBar(title: Text(current.name)),
+      body: ListView(
+        padding: const EdgeInsets.fromLTRB(24, 12, 24, 32),
+        children: [
+          _SavingsSummary(totalSaved: current.savedAmount, goals: 1),
+          const SizedBox(height: 14),
+          Text(
+            'Target \$${current.targetAmount.toStringAsFixed(2)} · ${(progress * 100).round()}%',
+            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 8),
+          LinearProgressIndicator(
+            value: progress,
+            minHeight: 8,
+            borderRadius: BorderRadius.circular(8),
+            color: const Color(0xFF00B879),
+            backgroundColor: const Color(0xFFE9F1ED),
+          ),
+          const SizedBox(height: 22),
+          const Text(
+            'Riwayat aktivitas',
+            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800),
+          ),
+          const SizedBox(height: 8),
+          if (history.isEmpty)
+            const Text(
+              'Belum ada setoran atau pemakaian.',
+              style: TextStyle(color: Color(0xFF8B91A4), fontSize: 11),
+            ),
+          ...history.map(
+            (transaction) => _SavingsActivityItem(
+              transaction: transaction,
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) =>
+                      TransactionDetailScreen(transaction: transaction),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class UseSavingsScreen extends StatefulWidget {
   const UseSavingsScreen({super.key});
 
@@ -264,8 +340,15 @@ class UseSavingsScreen extends StatefulWidget {
 class _UseSavingsScreenState extends State<UseSavingsScreen> {
   final _formKey = GlobalKey<FormState>();
   final _amountController = TextEditingController();
-  final _purposeController = TextEditingController();
+  static final _expenseCategories = transactionCategories
+      .where(
+        (category) =>
+            !const ['Gaji', 'Freelance', 'Bonus'].contains(category.name),
+      )
+      .map((category) => category.name)
+      .toList();
   int? _goalId;
+  String _category = _expenseCategories.first;
   DateTime _date = DateTime.now();
   bool _initialized = false;
   bool _saving = false;
@@ -283,7 +366,6 @@ class _UseSavingsScreenState extends State<UseSavingsScreen> {
   @override
   void dispose() {
     _amountController.dispose();
-    _purposeController.dispose();
     super.dispose();
   }
 
@@ -310,12 +392,7 @@ class _UseSavingsScreenState extends State<UseSavingsScreen> {
     }
     setState(() => _saving = true);
     try {
-      await store.useSavings(
-        goal,
-        amount,
-        _purposeController.text.trim(),
-        _date,
-      );
+      await store.useSavings(goal, amount, _category, _date);
       if (mounted) Navigator.pop(context);
     } catch (_) {
       if (mounted) {
@@ -380,15 +457,23 @@ class _UseSavingsScreenState extends State<UseSavingsScreen> {
                     },
                   ),
                   const SizedBox(height: 14),
-                  TextFormField(
-                    controller: _purposeController,
+                  DropdownButtonFormField<String>(
+                    initialValue: _category,
                     decoration: const InputDecoration(
-                      labelText: 'Keperluan',
+                      labelText: 'Kategori pengeluaran',
                       border: OutlineInputBorder(),
                     ),
-                    validator: (value) => value == null || value.trim().isEmpty
-                        ? 'Keperluan wajib diisi'
-                        : null,
+                    items: _expenseCategories
+                        .map(
+                          (category) => DropdownMenuItem(
+                            value: category,
+                            child: Text(category),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: (value) {
+                      if (value != null) setState(() => _category = value);
+                    },
                   ),
                   const SizedBox(height: 14),
                   OutlinedButton.icon(
@@ -450,8 +535,13 @@ class _SavingsSummary extends StatelessWidget {
 }
 
 class _SavingsGoalCard extends StatelessWidget {
-  const _SavingsGoalCard({required this.goal, required this.onAdd});
+  const _SavingsGoalCard({
+    required this.goal,
+    required this.onTap,
+    required this.onAdd,
+  });
   final SavingsGoalModel goal;
+  final VoidCallback onTap;
   final VoidCallback onAdd;
 
   @override
@@ -460,92 +550,130 @@ class _SavingsGoalCard extends StatelessWidget {
         ? 0.0
         : (goal.savedAmount / goal.targetAmount).clamp(0.0, 1.0);
     final isComplete = goal.savedAmount >= goal.targetAmount;
-    return Container(
-      margin: const EdgeInsets.only(bottom: 11),
-      padding: const EdgeInsets.all(15),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(11),
-        border: Border.all(color: const Color(0xFFE7E8F0)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 34,
-                height: 34,
-                decoration: const BoxDecoration(
-                  color: Color(0xFFEAF8F1),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.flag_outlined,
-                  color: Color(0xFF00A66A),
-                  size: 17,
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  goal.name,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w800,
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(11),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 11),
+        padding: const EdgeInsets.all(15),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(11),
+          border: Border.all(color: const Color(0xFFE7E8F0)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 34,
+                  height: 34,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFEAF8F1),
+                    shape: BoxShape.circle,
                   ),
-                ),
-              ),
-              if (!isComplete)
-                IconButton(
-                  onPressed: onAdd,
-                  tooltip: 'Tambah setoran',
-                  visualDensity: VisualDensity.compact,
-                  icon: const Icon(
-                    Icons.add_circle_outline,
+                  child: const Icon(
+                    Icons.flag_outlined,
                     color: Color(0xFF00A66A),
+                    size: 17,
                   ),
-                )
-              else
-                const Icon(
-                  Icons.check_circle,
-                  color: Color(0xFF00A66A),
-                  size: 20,
                 ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Row(
-            children: [
-              Text(
-                '\$${goal.savedAmount.toStringAsFixed(2)}',
-                style: const TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    goal.name,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
                 ),
-              ),
-              const Spacer(),
-              Text(
-                'Target \$${goal.targetAmount.toStringAsFixed(2)}',
-                style: const TextStyle(color: Color(0xFF8B91A4), fontSize: 10),
-              ),
-            ],
-          ),
-          const SizedBox(height: 7),
-          LinearProgressIndicator(
-            value: progress,
-            minHeight: 7,
-            borderRadius: BorderRadius.circular(8),
-            color: const Color(0xFF00B879),
-            backgroundColor: const Color(0xFFE9F1ED),
-          ),
-          const SizedBox(height: 5),
-          Text(
-            '${(progress * 100).round()}% tercapai',
-            style: const TextStyle(color: Color(0xFF8B91A4), fontSize: 9),
-          ),
-        ],
+                if (!isComplete)
+                  IconButton(
+                    onPressed: onAdd,
+                    tooltip: 'Tambah setoran',
+                    visualDensity: VisualDensity.compact,
+                    icon: const Icon(
+                      Icons.add_circle_outline,
+                      color: Color(0xFF00A66A),
+                    ),
+                  )
+                else
+                  const Icon(
+                    Icons.check_circle,
+                    color: Color(0xFF00A66A),
+                    size: 20,
+                  ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Text(
+                  '\$${goal.savedAmount.toStringAsFixed(2)}',
+                  style: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const Spacer(),
+                Text(
+                  'Target \$${goal.targetAmount.toStringAsFixed(2)}',
+                  style: const TextStyle(
+                    color: Color(0xFF8B91A4),
+                    fontSize: 10,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 7),
+            LinearProgressIndicator(
+              value: progress,
+              minHeight: 7,
+              borderRadius: BorderRadius.circular(8),
+              color: const Color(0xFF00B879),
+              backgroundColor: const Color(0xFFE9F1ED),
+            ),
+            const SizedBox(height: 5),
+            Text(
+              '${(progress * 100).round()}% tercapai',
+              style: const TextStyle(color: Color(0xFF8B91A4), fontSize: 9),
+            ),
+          ],
+        ),
       ),
+    );
+  }
+}
+
+class _SavingsActivityItem extends StatelessWidget {
+  const _SavingsActivityItem({required this.transaction, required this.onTap});
+  final TransactionModel transaction;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final isUse = transaction.account == TransactionAccount.savings;
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      leading: Icon(
+        isUse ? Icons.shopping_bag_outlined : Icons.add_circle_outline,
+        color: isUse ? const Color(0xFFE36A4A) : const Color(0xFF00A66A),
+      ),
+      title: Text(
+        isUse ? 'Pemakaian · ${transaction.category}' : 'Setoran tabungan',
+        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700),
+      ),
+      subtitle: Text(
+        '${transaction.date.day}/${transaction.date.month}/${transaction.date.year}',
+        style: const TextStyle(fontSize: 10),
+      ),
+      trailing: Text(
+        '\$${transaction.amount.toStringAsFixed(2)}',
+        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700),
+      ),
+      onTap: onTap,
     );
   }
 }

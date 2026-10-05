@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../data/transaction_store.dart';
 import '../models/debt_model.dart';
@@ -33,63 +34,79 @@ class _DashboardScreenState extends State<DashboardScreen> {
       const SavingsScreen(),
       const ReportScreen(),
     ];
-    return Scaffold(
-      body: SafeArea(bottom: false, child: pages[selectedIndex]),
-      floatingActionButton:
-          selectedIndex == 0 || selectedIndex == 2 || selectedIndex == 3
-          ? FloatingActionButton(
-              onPressed: () {
-                final page = switch (selectedIndex) {
-                  0 => const AddTransactionScreen(),
-                  2 => const AddDebtScreen(),
-                  _ => const AddSavingsGoalScreen(),
-                };
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => page),
-                );
-              },
-              backgroundColor: const Color(0xFF5B48F5),
-              foregroundColor: Colors.white,
-              child: const Icon(Icons.add),
-            )
-          : null,
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: selectedIndex,
-        height: 68,
-        backgroundColor: Colors.white,
-        indicatorColor: Colors.transparent,
-        labelTextStyle: const WidgetStatePropertyAll(
-          TextStyle(fontSize: 8, fontWeight: FontWeight.w500),
+    return PopScope<Object?>(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        if (selectedIndex != 0) {
+          setState(() => selectedIndex = 0);
+        } else {
+          SystemNavigator.pop();
+        }
+      },
+      child: Scaffold(
+        body: SafeArea(bottom: false, child: pages[selectedIndex]),
+        floatingActionButton:
+            selectedIndex == 0 ||
+                selectedIndex == 1 ||
+                selectedIndex == 2 ||
+                selectedIndex == 3
+            ? FloatingActionButton(
+                onPressed: () {
+                  final page = switch (selectedIndex) {
+                    0 => const AddTransactionScreen(),
+                    1 => const AddTransactionScreen(),
+                    2 => const AddDebtScreen(),
+                    _ => const AddSavingsGoalScreen(),
+                  };
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => page),
+                  );
+                },
+                backgroundColor: const Color(0xFF5B48F5),
+                foregroundColor: Colors.white,
+                child: const Icon(Icons.add),
+              )
+            : null,
+        bottomNavigationBar: NavigationBar(
+          selectedIndex: selectedIndex,
+          height: 68,
+          backgroundColor: Colors.white,
+          indicatorColor: Colors.transparent,
+          labelTextStyle: const WidgetStatePropertyAll(
+            TextStyle(fontSize: 8, fontWeight: FontWeight.w500),
+          ),
+          onDestinationSelected: (index) =>
+              setState(() => selectedIndex = index),
+          destinations: const [
+            NavigationDestination(
+              icon: Icon(Icons.home_outlined),
+              selectedIcon: Icon(Icons.home),
+              label: 'Home',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.receipt_long_outlined),
+              selectedIcon: Icon(Icons.receipt_long),
+              label: 'Transaksi',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.account_balance_wallet_outlined),
+              selectedIcon: Icon(Icons.account_balance_wallet),
+              label: 'Hutang',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.savings_outlined),
+              selectedIcon: Icon(Icons.savings),
+              label: 'Tabungan',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.bar_chart_outlined),
+              selectedIcon: Icon(Icons.bar_chart),
+              label: 'Laporan',
+            ),
+          ],
         ),
-        onDestinationSelected: (index) => setState(() => selectedIndex = index),
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.home_outlined),
-            selectedIcon: Icon(Icons.home),
-            label: 'Home',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.receipt_long_outlined),
-            selectedIcon: Icon(Icons.receipt_long),
-            label: 'Transaksi',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.account_balance_wallet_outlined),
-            selectedIcon: Icon(Icons.account_balance_wallet),
-            label: 'Hutang',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.savings_outlined),
-            selectedIcon: Icon(Icons.savings),
-            label: 'Tabungan',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.bar_chart_outlined),
-            selectedIcon: Icon(Icons.bar_chart),
-            label: 'Laporan',
-          ),
-        ],
       ),
     );
   }
@@ -232,7 +249,19 @@ class _DashboardContentState extends State<_DashboardContent> {
         ),
         if (store.debts.isEmpty)
           const _HomeEmptyLine(text: 'Belum ada catatan hutang.'),
-        ...store.debts.take(3).map((debt) => _HomeDebtItem(debt: debt)),
+        ...store.debts
+            .take(3)
+            .map(
+              (debt) => _HomeDebtItem(
+                debt: debt,
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => DebtDetailScreen(debt: debt),
+                  ),
+                ),
+              ),
+            ),
         const SizedBox(height: 12),
         _HomeSectionHeader(
           title: 'Target tabungan',
@@ -245,6 +274,12 @@ class _DashboardContentState extends State<_DashboardContent> {
             .map(
               (goal) => _HomeSavingsItem(
                 goal: goal,
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => SavingsGoalDetailScreen(goal: goal),
+                  ),
+                ),
                 onAdd: () => Navigator.push(
                   context,
                   MaterialPageRoute(
@@ -384,8 +419,9 @@ class _HomeSavingsBalance extends StatelessWidget {
 }
 
 class _HomeDebtItem extends StatelessWidget {
-  const _HomeDebtItem({required this.debt});
+  const _HomeDebtItem({required this.debt, required this.onTap});
   final DebtModel debt;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -394,49 +430,58 @@ class _HomeDebtItem extends StatelessWidget {
         : debt.isOverdue
         ? const Color(0xFFE36A4A)
         : const Color(0xFFE29A18);
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 7),
-      child: Row(
-        children: [
-          const Icon(
-            Icons.account_balance_wallet_outlined,
-            color: Color(0xFFE36A4A),
-            size: 18,
-          ),
-          const SizedBox(width: 9),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  debt.recipient,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                Text(
-                  debt.status,
-                  style: TextStyle(color: statusColor, fontSize: 9),
-                ),
-              ],
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 7),
+        child: Row(
+          children: [
+            const Icon(
+              Icons.account_balance_wallet_outlined,
+              color: Color(0xFFE36A4A),
+              size: 18,
             ),
-          ),
-          Text(
-            '\$${debt.amount.toStringAsFixed(2)}',
-            style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700),
-          ),
-        ],
+            const SizedBox(width: 9),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    debt.recipient,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  Text(
+                    '${debt.type.label} · ${debt.status}',
+                    style: TextStyle(color: statusColor, fontSize: 9),
+                  ),
+                ],
+              ),
+            ),
+            Text(
+              '\$${debt.amount.toStringAsFixed(2)}',
+              style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700),
+            ),
+          ],
+        ),
       ),
     );
   }
 }
 
 class _HomeSavingsItem extends StatelessWidget {
-  const _HomeSavingsItem({required this.goal, required this.onAdd});
+  const _HomeSavingsItem({
+    required this.goal,
+    required this.onTap,
+    required this.onAdd,
+  });
   final SavingsGoalModel goal;
+  final VoidCallback onTap;
   final VoidCallback onAdd;
 
   @override
@@ -444,69 +489,73 @@ class _HomeSavingsItem extends StatelessWidget {
     final progress = goal.targetAmount == 0
         ? 0.0
         : (goal.savedAmount / goal.targetAmount).clamp(0.0, 1.0);
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 7),
-      child: Row(
-        children: [
-          const Icon(
-            Icons.savings_outlined,
-            color: Color(0xFF00A66A),
-            size: 18,
-          ),
-          const SizedBox(width: 9),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 7),
+        child: Row(
+          children: [
+            const Icon(
+              Icons.savings_outlined,
+              color: Color(0xFF00A66A),
+              size: 18,
+            ),
+            const SizedBox(width: 9),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    goal.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  LinearProgressIndicator(
+                    value: progress,
+                    minHeight: 5,
+                    borderRadius: BorderRadius.circular(6),
+                    color: const Color(0xFF00B879),
+                    backgroundColor: const Color(0xFFE9F1ED),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 10),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Text(
-                  goal.name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+                  '\$${goal.savedAmount.toStringAsFixed(0)} / \$${goal.targetAmount.toStringAsFixed(0)}',
                   style: const TextStyle(
-                    fontSize: 10,
+                    fontSize: 9,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
-                const SizedBox(height: 4),
-                LinearProgressIndicator(
-                  value: progress,
-                  minHeight: 5,
-                  borderRadius: BorderRadius.circular(6),
-                  color: const Color(0xFF00B879),
-                  backgroundColor: const Color(0xFFE9F1ED),
+                IconButton(
+                  onPressed: onAdd,
+                  tooltip: 'Tambah tabungan ke ${goal.name}',
+                  visualDensity: VisualDensity.compact,
+                  constraints: const BoxConstraints.tightFor(
+                    width: 28,
+                    height: 28,
+                  ),
+                  padding: EdgeInsets.zero,
+                  icon: const Icon(
+                    Icons.add_circle_outline,
+                    color: Color(0xFF00A66A),
+                    size: 17,
+                  ),
                 ),
               ],
             ),
-          ),
-          const SizedBox(width: 10),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                '\$${goal.savedAmount.toStringAsFixed(0)} / \$${goal.targetAmount.toStringAsFixed(0)}',
-                style: const TextStyle(
-                  fontSize: 9,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              IconButton(
-                onPressed: onAdd,
-                tooltip: 'Tambah tabungan ke ${goal.name}',
-                visualDensity: VisualDensity.compact,
-                constraints: const BoxConstraints.tightFor(
-                  width: 28,
-                  height: 28,
-                ),
-                padding: EdgeInsets.zero,
-                icon: const Icon(
-                  Icons.add_circle_outline,
-                  color: Color(0xFF00A66A),
-                  size: 17,
-                ),
-              ),
-            ],
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

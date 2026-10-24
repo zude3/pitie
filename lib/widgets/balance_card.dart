@@ -15,7 +15,7 @@ class BalanceCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 120,
+      height: 160,
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
@@ -59,7 +59,7 @@ class BalanceCard extends StatelessWidget {
             showAmount ? '\$${amount.toStringAsFixed(2)}' : '\$ -',
             style: const TextStyle(
               color: Colors.white,
-              fontSize: 24,
+              fontSize: 34,
               fontWeight: FontWeight.w800,
               height: 1.1,
             ),

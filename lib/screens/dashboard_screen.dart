@@ -73,36 +73,54 @@ class _DashboardScreenState extends State<DashboardScreen> {
           selectedIndex: selectedIndex,
           height: 68,
           backgroundColor: Colors.white,
-          indicatorColor: Colors.transparent,
-          labelTextStyle: const WidgetStatePropertyAll(
-            TextStyle(fontSize: 8, fontWeight: FontWeight.w500),
-          ),
-          onDestinationSelected: (index) =>
-              setState(() => selectedIndex = index),
+          indicatorColor: const Color(0xFFEAE6FF),
+
+          labelTextStyle: WidgetStateProperty.resolveWith<TextStyle>((states) {
+            final isSelected = states.contains(WidgetState.selected);
+
+            return TextStyle(
+              fontSize: 8,
+              fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+              color: isSelected
+                  ? const Color(0xFF5B48F5)
+                  : const Color(0xFF8B91A4),
+            );
+          }),
+
+          onDestinationSelected: (index) {
+            setState(() => selectedIndex = index);
+          },
+
           destinations: const [
             NavigationDestination(
-              icon: Icon(Icons.home_outlined),
-              selectedIcon: Icon(Icons.home),
+              icon: Icon(Icons.home_outlined, color: Color(0xFF8B91A4)),
+              selectedIcon: Icon(Icons.home, color: Color(0xFF5B48F5)),
               label: 'Home',
             ),
             NavigationDestination(
-              icon: Icon(Icons.receipt_long_outlined),
-              selectedIcon: Icon(Icons.receipt_long),
+              icon: Icon(Icons.receipt_long_outlined, color: Color(0xFF8B91A4)),
+              selectedIcon: Icon(Icons.receipt_long, color: Color(0xFF5B48F5)),
               label: 'Transaksi',
             ),
             NavigationDestination(
-              icon: Icon(Icons.account_balance_wallet_outlined),
-              selectedIcon: Icon(Icons.account_balance_wallet),
+              icon: Icon(
+                Icons.account_balance_wallet_outlined,
+                color: Color(0xFF8B91A4),
+              ),
+              selectedIcon: Icon(
+                Icons.account_balance_wallet,
+                color: Color(0xFF5B48F5),
+              ),
               label: 'Hutang',
             ),
             NavigationDestination(
-              icon: Icon(Icons.savings_outlined),
-              selectedIcon: Icon(Icons.savings),
+              icon: Icon(Icons.savings_outlined, color: Color(0xFF8B91A4)),
+              selectedIcon: Icon(Icons.savings, color: Color(0xFF5B48F5)),
               label: 'Tabungan',
             ),
             NavigationDestination(
-              icon: Icon(Icons.bar_chart_outlined),
-              selectedIcon: Icon(Icons.bar_chart),
+              icon: Icon(Icons.bar_chart_outlined, color: Color(0xFF8B91A4)),
+              selectedIcon: Icon(Icons.bar_chart, color: Color(0xFF5B48F5)),
               label: 'Laporan',
             ),
           ],
@@ -150,14 +168,18 @@ class _DashboardContentState extends State<_DashboardContent> {
       children: [
         const Text(
           'Welcome Back,',
-          style: TextStyle(color: Color(0xFF6E7488), fontSize: 10),
+          style: TextStyle(color: Color(0xFF6E7488), fontSize: 13),
         ),
-        const SizedBox(height: 2),
+        const SizedBox(height: 3),
         Row(
           children: [
             const Text(
               'Zuhdi',
-              style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
+              style: TextStyle(
+                color: Color(0xFF111631),
+                fontSize: 24,
+                fontWeight: FontWeight.w700,
+              ),
             ),
             const Spacer(),
             Container(
@@ -176,7 +198,7 @@ class _DashboardContentState extends State<_DashboardContent> {
             ),
           ],
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 20),
         BalanceCard(
           amount: store.balance,
           showAmount: _showBalance,
@@ -187,7 +209,7 @@ class _DashboardContentState extends State<_DashboardContent> {
           amount: store.savingsBalance,
           visible: _showBalance,
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 14),
         Row(
           children: [
             Expanded(
@@ -209,85 +231,112 @@ class _DashboardContentState extends State<_DashboardContent> {
             ),
           ],
         ),
-        const SizedBox(height: 18),
+        const SizedBox(height: 24),
         Row(
           children: [
             const Text(
               'Recent Transactions',
-              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800),
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800),
             ),
             const Spacer(),
             TextButton(
               onPressed: () => widget.onNavigate(1),
-              child: const Text('see all'),
+              style: TextButton.styleFrom(
+                padding: EdgeInsets.zero,
+                minimumSize: Size.zero,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+              child: const Text(
+                'see all',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF5B48F5),
+                ),
+              ),
             ),
           ],
         ),
-        if (activities.isEmpty)
-          const _HomeEmptyLine(text: 'Belum ada riwayat.'),
-        ...activities
-            .take(5)
-            .map(
-              (activity) => _HomeActivityItem(
-                activity: activity,
-                onTap: activity.transaction == null
-                    ? null
-                    : () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => TransactionDetailScreen(
-                            transaction: activity.transaction!,
+        const SizedBox(height: 10),
+        _HomePanel(
+          children: [
+            if (activities.isEmpty)
+              const _HomeEmptyLine(text: 'Belum ada riwayat.'),
+            ...activities
+                .take(5)
+                .map(
+                  (activity) => _HomeActivityItem(
+                    activity: activity,
+                    onTap: activity.transaction == null
+                        ? null
+                        : () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => TransactionDetailScreen(
+                                transaction: activity.transaction!,
+                              ),
+                            ),
                           ),
-                        ),
-                      ),
-              ),
-            ),
-        const SizedBox(height: 12),
+                  ),
+                ),
+          ],
+        ),
+        const SizedBox(height: 20),
         _HomeSectionHeader(
           title: 'Catatan hutang',
           onTap: () => widget.onNavigate(2),
         ),
-        if (store.debts.isEmpty)
-          const _HomeEmptyLine(text: 'Belum ada catatan hutang.'),
-        ...store.debts
-            .take(3)
-            .map(
-              (debt) => _HomeDebtItem(
-                debt: debt,
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => DebtDetailScreen(debt: debt),
+        const SizedBox(height: 10),
+        _HomePanel(
+          children: [
+            if (store.debts.isEmpty)
+              const _HomeEmptyLine(text: 'Belum ada catatan hutang.'),
+            ...store.debts
+                .take(3)
+                .map(
+                  (debt) => _HomeDebtItem(
+                    debt: debt,
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => DebtDetailScreen(debt: debt),
+                      ),
+                    ),
                   ),
                 ),
-              ),
-            ),
-        const SizedBox(height: 12),
+          ],
+        ),
+        const SizedBox(height: 20),
         _HomeSectionHeader(
           title: 'Target tabungan',
           onTap: () => widget.onNavigate(3),
         ),
-        if (store.savingsGoals.isEmpty)
-          const _HomeEmptyLine(text: 'Belum ada target tabungan.'),
-        ...store.savingsGoals
-            .take(3)
-            .map(
-              (goal) => _HomeSavingsItem(
-                goal: goal,
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => SavingsGoalDetailScreen(goal: goal),
+        const SizedBox(height: 10),
+        _HomePanel(
+          children: [
+            if (store.savingsGoals.isEmpty)
+              const _HomeEmptyLine(text: 'Belum ada target tabungan.'),
+            ...store.savingsGoals
+                .take(3)
+                .map(
+                  (goal) => _HomeSavingsItem(
+                    goal: goal,
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => SavingsGoalDetailScreen(goal: goal),
+                      ),
+                    ),
+                    onAdd: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => AddSavingsAmountScreen(goal: goal),
+                      ),
+                    ),
                   ),
                 ),
-                onAdd: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => AddSavingsAmountScreen(goal: goal),
-                  ),
-                ),
-              ),
-            ),
+          ],
+        ),
       ],
     );
   }
@@ -323,9 +372,9 @@ class _HomeActivityItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) => InkWell(
     onTap: onTap,
-    borderRadius: BorderRadius.circular(10),
+    borderRadius: BorderRadius.circular(14),
     child: Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
+      padding: const EdgeInsets.symmetric(vertical: 11),
       child: Row(
         children: [
           Container(
@@ -347,24 +396,33 @@ class _HomeActivityItem extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                    fontSize: 11,
+                    fontSize: 13,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
                 Text(
                   activity.subtitle,
-                  style: const TextStyle(color: Color(0xFF8B91A4), fontSize: 9),
+                  style: const TextStyle(
+                    color: Color(0xFF8B91A4),
+                    fontSize: 11,
+                  ),
                 ),
               ],
             ),
           ),
           const SizedBox(width: 8),
-          Text(
-            '${activity.isCredit ? '+' : '-'}\$${activity.amount.toStringAsFixed(2)}',
-            style: TextStyle(
-              color: activity.color,
-              fontSize: 10,
-              fontWeight: FontWeight.w800,
+          SizedBox(
+            width: 100,
+            child: Text(
+              '${activity.isCredit ? '+' : '-'}\$${activity.amount.toStringAsFixed(2)}',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.end,
+              style: TextStyle(
+                color: activity.color,
+                fontSize: 14,
+                fontWeight: FontWeight.w800,
+              ),
             ),
           ),
         ],
@@ -384,10 +442,20 @@ class _HomeSectionHeader extends StatelessWidget {
       Expanded(
         child: Text(
           title,
-          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800),
+          style: const TextStyle(
+            color: Color(0xFF111631),
+            fontSize: 16,
+            fontWeight: FontWeight.w700,
+          ),
         ),
       ),
-      TextButton(onPressed: onTap, child: const Text('see all')),
+      TextButton(
+        onPressed: onTap,
+        child: const Text(
+          'see all',
+          style: TextStyle(fontWeight: FontWeight.w600),
+        ),
+      ),
     ],
   );
 }
@@ -406,12 +474,12 @@ class _HomeSavingsBalance extends StatelessWidget {
         const SizedBox(width: 6),
         const Text(
           'Saldo tabungan',
-          style: TextStyle(color: Color(0xFF6E7488), fontSize: 10),
+          style: TextStyle(color: Color(0xFF6E7488), fontSize: 12),
         ),
         const Spacer(),
         Text(
           visible ? '\$${amount.toStringAsFixed(2)}' : '\$ -',
-          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800),
+          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
         ),
       ],
     ),
@@ -432,9 +500,9 @@ class _HomeDebtItem extends StatelessWidget {
         : const Color(0xFFE29A18);
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: BorderRadius.circular(14),
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 7),
+        padding: const EdgeInsets.symmetric(vertical: 10),
         child: Row(
           children: [
             const Icon(
@@ -452,20 +520,20 @@ class _HomeDebtItem extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
-                      fontSize: 10,
+                      fontSize: 12,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
                   Text(
                     '${debt.type.label} · ${debt.status}',
-                    style: TextStyle(color: statusColor, fontSize: 9),
+                    style: TextStyle(color: statusColor, fontSize: 11),
                   ),
                 ],
               ),
             ),
             Text(
               '\$${debt.amount.toStringAsFixed(2)}',
-              style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700),
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
             ),
           ],
         ),
@@ -491,9 +559,9 @@ class _HomeSavingsItem extends StatelessWidget {
         : (goal.savedAmount / goal.targetAmount).clamp(0.0, 1.0);
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: BorderRadius.circular(14),
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 7),
+        padding: const EdgeInsets.symmetric(vertical: 10),
         child: Row(
           children: [
             const Icon(
@@ -511,14 +579,14 @@ class _HomeSavingsItem extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
-                      fontSize: 10,
+                      fontSize: 12,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
                   const SizedBox(height: 4),
                   LinearProgressIndicator(
                     value: progress,
-                    minHeight: 5,
+                    minHeight: 6,
                     borderRadius: BorderRadius.circular(6),
                     color: const Color(0xFF00B879),
                     backgroundColor: const Color(0xFFE9F1ED),
@@ -533,7 +601,7 @@ class _HomeSavingsItem extends StatelessWidget {
                 Text(
                   '\$${goal.savedAmount.toStringAsFixed(0)} / \$${goal.targetAmount.toStringAsFixed(0)}',
                   style: const TextStyle(
-                    fontSize: 9,
+                    fontSize: 11,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
@@ -570,8 +638,25 @@ class _HomeEmptyLine extends StatelessWidget {
     padding: const EdgeInsets.symmetric(vertical: 8),
     child: Text(
       text,
-      style: const TextStyle(color: Color(0xFF8B91A4), fontSize: 10),
+      style: const TextStyle(color: Color(0xFF8B91A4), fontSize: 12),
     ),
+  );
+}
+
+class _HomePanel extends StatelessWidget {
+  const _HomePanel({required this.children});
+
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(20),
+      border: Border.all(color: const Color(0xFFE3E6EF)),
+    ),
+    child: Column(children: children),
   );
 }
 
@@ -592,35 +677,44 @@ class _SummaryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-    height: 48,
-    padding: const EdgeInsets.symmetric(horizontal: 10),
+    height: 76,
+    padding: const EdgeInsets.symmetric(horizontal: 14),
     decoration: BoxDecoration(
       color: Colors.white,
-      borderRadius: BorderRadius.circular(11),
-      border: Border.all(color: const Color(0xFFE7E8F0)),
+      borderRadius: BorderRadius.circular(18),
+      border: Border.all(color: const Color(0xFFE3E6EF)),
     ),
     child: Row(
       children: [
         Container(
-          width: 23,
-          height: 23,
+          width: 34,
+          height: 34,
           decoration: BoxDecoration(
             color: color.withValues(alpha: 0.10),
             shape: BoxShape.circle,
           ),
-          child: Icon(icon, color: color, size: 13),
+          child: Icon(icon, color: color, size: 20),
         ),
         const SizedBox(width: 9),
         Column(
           mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(label, style: const TextStyle(fontSize: 9)),
+            Text(
+              label,
+              style: const TextStyle(
+                color: Color(0xFF8B91A4),
+                fontSize: 11,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
             Text(
               '\$${amount.toStringAsFixed(2)}',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 color: color,
-                fontSize: 11,
+                fontSize: 14,
                 fontWeight: FontWeight.w800,
               ),
             ),

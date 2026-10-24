@@ -165,20 +165,21 @@ class _ReportScreenState extends State<ReportScreen> {
       children: [
         const Text(
           'Reports',
-          style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800),
+          style: TextStyle(
+            color: Color(0xFF111631),
+            fontSize: 28,
+            fontWeight: FontWeight.w700,
+          ),
         ),
         const SizedBox(height: 6),
         const Text(
           'Your financial overview',
-          style: TextStyle(color: Color(0xFF8B91A4), fontSize: 11),
+          style: TextStyle(color: Color(0xFF8B91A4), fontSize: 13),
         ),
         const SizedBox(height: 22),
         DropdownButtonFormField<_ReportPeriod>(
           initialValue: period,
-          decoration: const InputDecoration(
-            labelText: 'Period',
-            border: OutlineInputBorder(),
-          ),
+          decoration: const InputDecoration(labelText: 'Period'),
           items: const [
             DropdownMenuItem(value: _ReportPeriod.all, child: Text('All')),
             DropdownMenuItem(value: _ReportPeriod.today, child: Text('Today')),
@@ -226,25 +227,37 @@ class _ReportScreenState extends State<ReportScreen> {
           ],
         ),
         const SizedBox(height: 12),
-        _Metric(
-          label: 'Balance',
-          value: income - expenseTotal,
-          color: const Color(0xFF5265F5),
+        Row(
+          children: [
+            Expanded(
+              child: _Metric(
+                label: 'Balance',
+                value: income - expenseTotal,
+                color: const Color(0xFF5B48F5),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _Metric(
+                label: 'Transactions',
+                value: transactions.length.toDouble(),
+                color: const Color(0xFFF59E0B),
+                isCurrency: false,
+              ),
+            ),
+          ],
         ),
-        const SizedBox(height: 12),
-        _Metric(
-          label: 'Transactions',
-          value: transactions.length.toDouble(),
-          color: const Color(0xFFF59E0B),
-          isCurrency: false,
-        ),
-        const SizedBox(height: 26),
+        const SizedBox(height: 24),
         Row(
           children: [
             const Expanded(
               child: Text(
                 'Weekly expenses',
-                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800),
+                style: TextStyle(
+                  color: Color(0xFF111631),
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ),
             IconButton(
@@ -264,8 +277,8 @@ class _ReportScreenState extends State<ReportScreen> {
           padding: const EdgeInsets.fromLTRB(14, 12, 14, 8),
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: const Color(0xFFE7E8F0)),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: const Color(0xFFE3E6EF)),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -286,7 +299,11 @@ class _ReportScreenState extends State<ReportScreen> {
         const SizedBox(height: 26),
         const Text(
           'Expenses by category',
-          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800),
+          style: TextStyle(
+            color: Color(0xFF111631),
+            fontSize: 16,
+            fontWeight: FontWeight.w700,
+          ),
         ),
         const SizedBox(height: 12),
         ...categories.entries.map(
@@ -314,18 +331,18 @@ class _Metric extends StatelessWidget {
   final bool isCurrency;
   @override
   Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.all(14),
+    padding: const EdgeInsets.all(16),
     decoration: BoxDecoration(
       color: Colors.white,
-      borderRadius: BorderRadius.circular(12),
-      border: Border.all(color: const Color(0xFFE7E8F0)),
+      borderRadius: BorderRadius.circular(18),
+      border: Border.all(color: const Color(0xFFE3E6EF)),
     ),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           label,
-          style: const TextStyle(color: Color(0xFF8B91A4), fontSize: 10),
+          style: const TextStyle(color: Color(0xFF8B91A4), fontSize: 12),
         ),
         const SizedBox(height: 5),
         Text(
@@ -334,8 +351,8 @@ class _Metric extends StatelessWidget {
               : value.toInt().toString(),
           style: TextStyle(
             color: color,
-            fontSize: 16,
-            fontWeight: FontWeight.w800,
+            fontSize: 17,
+            fontWeight: FontWeight.w700,
           ),
         ),
       ],

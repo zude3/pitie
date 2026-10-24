@@ -21,6 +21,7 @@ const transactionCategories = <CategoryModel>[
   CategoryModel('Belanja', Icons.shopping_basket_outlined, Color(0xFFB464C6)),
   CategoryModel('Hiburan', Icons.movie_outlined, Color(0xFFE9A33A)),
   CategoryModel('Pendidikan', Icons.menu_book_outlined, Color(0xFF6E7CF6)),
+  CategoryModel('Utilitas', Icons.receipt_long_outlined, Color(0xFF9E8576)),
 ];
 
 CategoryModel categoryFor(String name) => transactionCategories.firstWhere(

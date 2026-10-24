@@ -38,42 +38,51 @@ class _DebtScreenState extends State<DebtScreen> {
     final unpaid = debts.where((debt) => !debt.isPaid).toList();
     final total = unpaid.fold<double>(0, (sum, debt) => sum + debt.amount);
     return ListView(
-      padding: const EdgeInsets.fromLTRB(24, 20, 24, 96),
+      padding: const EdgeInsets.fromLTRB(24, 16, 24, 96),
       children: [
         const Text(
           'Debt',
-          style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800),
+          style: TextStyle(
+            color: Color(0xFF111631),
+            fontSize: 28,
+            fontWeight: FontWeight.w700,
+          ),
         ),
         const SizedBox(height: 6),
         const Text(
           'Catat dan pantau hutang yang belum lunas',
-          style: TextStyle(color: Color(0xFF8B91A4), fontSize: 11),
+          style: TextStyle(color: Color(0xFF8B91A4), fontSize: 13),
         ),
-        const SizedBox(height: 18),
+        const SizedBox(height: 14),
         _DebtSummary(total: total, count: unpaid.length),
-        const SizedBox(height: 22),
+        const SizedBox(height: 16),
         Row(
           children: [
             const Expanded(
               child: Text(
                 'Daftar hutang',
-                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800),
+                style: TextStyle(
+                  color: Color(0xFF111631),
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ),
             if (store.debts.isNotEmpty)
               IconButton(
                 onPressed: () => _confirmClear(context, store),
                 tooltip: 'Hapus semua catatan hutang',
+                visualDensity: VisualDensity.compact,
                 icon: const Icon(Icons.delete_sweep_outlined),
               ),
           ],
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 8),
         TextField(
           decoration: const InputDecoration(
             prefixIcon: Icon(Icons.search),
             hintText: 'Cari hutang',
-            border: OutlineInputBorder(),
+            contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 10),
             isDense: true,
           ),
           onChanged: (value) => setState(() => _query = value),
@@ -87,6 +96,10 @@ class _DebtScreenState extends State<DebtScreen> {
                 decoration: const InputDecoration(
                   labelText: 'Jenis',
                   border: OutlineInputBorder(),
+                  contentPadding: EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 10,
+                  ),
                   isDense: true,
                 ),
                 items: [
@@ -111,6 +124,10 @@ class _DebtScreenState extends State<DebtScreen> {
                 decoration: const InputDecoration(
                   labelText: 'Periode',
                   border: OutlineInputBorder(),
+                  contentPadding: EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 10,
+                  ),
                   isDense: true,
                 ),
                 items: const [
@@ -138,7 +155,7 @@ class _DebtScreenState extends State<DebtScreen> {
             ),
           ],
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 8),
         if (debts.isEmpty)
           const _EmptyState(
             icon: Icons.receipt_long_outlined,
@@ -483,34 +500,51 @@ class _DebtSummary extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.all(18),
+    padding: const EdgeInsets.all(20),
     decoration: BoxDecoration(
-      color: const Color(0xFFFFF1EC),
-      borderRadius: BorderRadius.circular(12),
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(20),
+      border: Border.all(color: const Color(0xFFE3E6EF)),
     ),
     child: Row(
       children: [
-        const Icon(
-          Icons.account_balance_wallet_outlined,
-          color: Color(0xFFE36A4A),
+        Container(
+          width: 44,
+          height: 44,
+          decoration: BoxDecoration(
+            color: const Color(0xFFFF4B4B).withValues(alpha: 0.1),
+            shape: BoxShape.circle,
+          ),
+          child: const Icon(
+            Icons.account_balance_wallet_outlined,
+            color: Color(0xFFFF4B4B),
+            size: 21,
+          ),
         ),
-        const SizedBox(width: 12),
+        const SizedBox(width: 14),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('Belum lunas', style: TextStyle(fontSize: 11)),
+              const Text(
+                'Belum lunas',
+                style: TextStyle(color: Color(0xFF8B91A4), fontSize: 12),
+              ),
               Text(
                 '\$${total.toStringAsFixed(2)}',
                 style: const TextStyle(
-                  fontSize: 19,
-                  fontWeight: FontWeight.w800,
+                  color: Color(0xFF111631),
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
             ],
           ),
         ),
-        Text('$count catatan', style: const TextStyle(fontSize: 10)),
+        Text(
+          '$count catatan',
+          style: const TextStyle(color: Color(0xFF8B91A4), fontSize: 12),
+        ),
       ],
     ),
   );
@@ -529,14 +563,14 @@ class _DebtItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) => InkWell(
     onTap: onTap,
-    borderRadius: BorderRadius.circular(11),
+    borderRadius: BorderRadius.circular(16),
     child: Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(12),
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(11),
-        border: Border.all(color: const Color(0xFFE7E8F0)),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE3E6EF)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -547,7 +581,8 @@ class _DebtItem extends StatelessWidget {
                 child: Text(
                   debt.recipient,
                   style: const TextStyle(
-                    fontSize: 12,
+                    color: Color(0xFF111631),
+                    fontSize: 14,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
@@ -557,8 +592,8 @@ class _DebtItem extends StatelessWidget {
                 style: TextStyle(
                   color: debt.isPaid
                       ? const Color(0xFF8B91A4)
-                      : const Color(0xFFE36A4A),
-                  fontSize: 11,
+                      : const Color(0xFFFF4B4B),
+                  fontSize: 14,
                   fontWeight: FontWeight.w800,
                 ),
               ),
@@ -573,16 +608,19 @@ class _DebtItem extends StatelessWidget {
               _DebtStatusLabel(debt: debt),
               Text(
                 debt.type.label,
-                style: const TextStyle(color: Color(0xFF687183), fontSize: 9),
+                style: const TextStyle(color: Color(0xFF687183), fontSize: 11),
               ),
               Text(
                 'Mulai ${_formatDate(debt.date)}',
-                style: const TextStyle(color: Color(0xFF8B91A4), fontSize: 9),
+                style: const TextStyle(color: Color(0xFF8B91A4), fontSize: 11),
               ),
               if (debt.dueDate != null)
                 Text(
                   'Tenggat ${_formatDate(debt.dueDate!)}',
-                  style: const TextStyle(color: Color(0xFF8B91A4), fontSize: 9),
+                  style: const TextStyle(
+                    color: Color(0xFF8B91A4),
+                    fontSize: 11,
+                  ),
                 ),
             ],
           ),
@@ -592,7 +630,7 @@ class _DebtItem extends StatelessWidget {
               debt.note,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(color: Color(0xFF687183), fontSize: 10),
+              style: const TextStyle(color: Color(0xFF687183), fontSize: 12),
             ),
           ],
           if (!debt.isPaid) ...[
@@ -605,6 +643,12 @@ class _DebtItem extends StatelessWidget {
                 label: const Text('Lunasi'),
                 style: TextButton.styleFrom(
                   visualDensity: VisualDensity.compact,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 2,
+                  ),
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 ),
               ),
             ),
@@ -657,7 +701,7 @@ class _DebtStatusLabel extends StatelessWidget {
         ? const Color(0xFFE36A4A)
         : const Color(0xFFE29A18);
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(10),
@@ -666,7 +710,7 @@ class _DebtStatusLabel extends StatelessWidget {
         debt.status,
         style: TextStyle(
           color: color,
-          fontSize: 9,
+          fontSize: 10,
           fontWeight: FontWeight.w700,
         ),
       ),

@@ -21,12 +21,16 @@ class SavingsScreen extends StatelessWidget {
       children: [
         const Text(
           'Tabungan',
-          style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800),
+          style: TextStyle(
+            color: Color(0xFF111631),
+            fontSize: 28,
+            fontWeight: FontWeight.w700,
+          ),
         ),
         const SizedBox(height: 6),
         const Text(
           'Rencanakan tujuan dan pantau progresnya',
-          style: TextStyle(color: Color(0xFF8B91A4), fontSize: 11),
+          style: TextStyle(color: Color(0xFF8B91A4), fontSize: 13),
         ),
         const SizedBox(height: 18),
         _SavingsSummary(
@@ -47,7 +51,11 @@ class SavingsScreen extends StatelessWidget {
         const SizedBox(height: 22),
         const Text(
           'Target tabungan',
-          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800),
+          style: TextStyle(
+            color: Color(0xFF111631),
+            fontSize: 16,
+            fontWeight: FontWeight.w700,
+          ),
         ),
         const SizedBox(height: 10),
         if (store.savingsGoals.isEmpty)
@@ -504,31 +512,51 @@ class _SavingsSummary extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.all(18),
+    padding: const EdgeInsets.all(20),
     decoration: BoxDecoration(
-      color: const Color(0xFFEAF8F1),
-      borderRadius: BorderRadius.circular(12),
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(20),
+      border: Border.all(color: const Color(0xFFE3E6EF)),
     ),
     child: Row(
       children: [
-        const Icon(Icons.savings_outlined, color: Color(0xFF00A66A)),
-        const SizedBox(width: 12),
+        Container(
+          width: 44,
+          height: 44,
+          decoration: BoxDecoration(
+            color: const Color(0xFF00B879).withValues(alpha: 0.1),
+            shape: BoxShape.circle,
+          ),
+          child: const Icon(
+            Icons.savings_outlined,
+            color: Color(0xFF00A66A),
+            size: 21,
+          ),
+        ),
+        const SizedBox(width: 14),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('Saldo tabungan', style: TextStyle(fontSize: 11)),
+              const Text(
+                'Saldo tabungan',
+                style: TextStyle(color: Color(0xFF8B91A4), fontSize: 12),
+              ),
               Text(
                 '\$${totalSaved.toStringAsFixed(2)}',
                 style: const TextStyle(
-                  fontSize: 19,
-                  fontWeight: FontWeight.w800,
+                  color: Color(0xFF111631),
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
             ],
           ),
         ),
-        Text('$goals target', style: const TextStyle(fontSize: 10)),
+        Text(
+          '$goals target',
+          style: const TextStyle(color: Color(0xFF8B91A4), fontSize: 12),
+        ),
       ],
     ),
   );
@@ -552,14 +580,14 @@ class _SavingsGoalCard extends StatelessWidget {
     final isComplete = goal.savedAmount >= goal.targetAmount;
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(11),
+      borderRadius: BorderRadius.circular(16),
       child: Container(
-        margin: const EdgeInsets.only(bottom: 11),
-        padding: const EdgeInsets.all(15),
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(11),
-          border: Border.all(color: const Color(0xFFE7E8F0)),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFFE3E6EF)),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -567,8 +595,8 @@ class _SavingsGoalCard extends StatelessWidget {
             Row(
               children: [
                 Container(
-                  width: 34,
-                  height: 34,
+                  width: 40,
+                  height: 40,
                   decoration: const BoxDecoration(
                     color: Color(0xFFEAF8F1),
                     shape: BoxShape.circle,
@@ -576,7 +604,7 @@ class _SavingsGoalCard extends StatelessWidget {
                   child: const Icon(
                     Icons.flag_outlined,
                     color: Color(0xFF00A66A),
-                    size: 17,
+                    size: 20,
                   ),
                 ),
                 const SizedBox(width: 10),
@@ -584,8 +612,9 @@ class _SavingsGoalCard extends StatelessWidget {
                   child: Text(
                     goal.name,
                     style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w800,
+                      color: Color(0xFF111631),
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
                 ),
@@ -613,7 +642,7 @@ class _SavingsGoalCard extends StatelessWidget {
                 Text(
                   '\$${goal.savedAmount.toStringAsFixed(2)}',
                   style: const TextStyle(
-                    fontSize: 11,
+                    fontSize: 13,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
@@ -622,7 +651,7 @@ class _SavingsGoalCard extends StatelessWidget {
                   'Target \$${goal.targetAmount.toStringAsFixed(2)}',
                   style: const TextStyle(
                     color: Color(0xFF8B91A4),
-                    fontSize: 10,
+                    fontSize: 12,
                   ),
                 ),
               ],
@@ -630,7 +659,7 @@ class _SavingsGoalCard extends StatelessWidget {
             const SizedBox(height: 7),
             LinearProgressIndicator(
               value: progress,
-              minHeight: 7,
+              minHeight: 8,
               borderRadius: BorderRadius.circular(8),
               color: const Color(0xFF00B879),
               backgroundColor: const Color(0xFFE9F1ED),
@@ -638,7 +667,7 @@ class _SavingsGoalCard extends StatelessWidget {
             const SizedBox(height: 5),
             Text(
               '${(progress * 100).round()}% tercapai',
-              style: const TextStyle(color: Color(0xFF8B91A4), fontSize: 9),
+              style: const TextStyle(color: Color(0xFF8B91A4), fontSize: 11),
             ),
           ],
         ),

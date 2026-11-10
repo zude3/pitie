@@ -5,6 +5,7 @@ import '../data/transaction_store.dart';
 import '../models/debt_model.dart';
 import '../models/savings_goal_model.dart';
 import '../models/transaction_model.dart';
+import '../services/auth_service.dart';
 import '../widgets/balance_card.dart';
 import 'add_transaction_screen.dart';
 import 'debt_screen.dart';
@@ -23,11 +24,41 @@ class DashboardScreen extends StatefulWidget {
 class _DashboardScreenState extends State<DashboardScreen> {
   int selectedIndex = 0;
 
+  Future<void> _confirmSignOut() async {
+    final shouldSignOut = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Keluar dari akun?'),
+        content: const Text('Anda yakin ingin keluar dari akun Pitie?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Batal'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Keluar'),
+          ),
+        ],
+      ),
+    );
+    if (shouldSignOut != true) return;
+
+    try {
+      await AuthService().signOut();
+    } on AuthServiceException catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(error.message)));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final pages = [
       _DashboardContent(
         onNavigate: (index) => setState(() => selectedIndex = index),
+        onSignOut: _confirmSignOut,
       ),
       const TransactionScreen(),
       const DebtScreen(),
@@ -131,9 +162,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
 }
 
 class _DashboardContent extends StatefulWidget {
-  const _DashboardContent({required this.onNavigate});
+  const _DashboardContent({required this.onNavigate, required this.onSignOut});
 
   final ValueChanged<int> onNavigate;
+  final VoidCallback onSignOut;
 
   @override
   State<_DashboardContent> createState() => _DashboardContentState();
@@ -195,6 +227,12 @@ class _DashboardContentState extends State<_DashboardContent> {
                 color: Color(0xFF667085),
                 size: 18,
               ),
+            ),
+            const SizedBox(width: 8),
+            IconButton(
+              tooltip: 'Keluar',
+              onPressed: widget.onSignOut,
+              icon: const Icon(Icons.logout_outlined, color: Color(0xFF667085)),
             ),
           ],
         ),

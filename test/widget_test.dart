@@ -240,7 +240,7 @@ void main() {
     tester,
   ) async {
     final goal = SavingsGoalModel(
-      id: 7,
+      id: '7',
       name: 'Mobil',
       targetAmount: 100,
       savedAmount: 25,
@@ -250,22 +250,22 @@ void main() {
       ..savingsGoals = [goal]
       ..transactions = [
         TransactionModel(
-          id: 1,
+          id: '1',
           type: TransactionType.expense,
           amount: 25,
           category: 'Tabungan',
           description: 'Setoran tabungan: Mobil',
           date: DateTime(2026, 10, 2),
-          savingsGoalId: 7,
+          savingsGoalId: '7',
         ),
         TransactionModel(
-          id: 2,
+          id: '2',
           type: TransactionType.expense,
           amount: 10,
           category: 'Tabungan',
           description: 'Setoran tabungan: Rumah',
           date: DateTime(2026, 10, 3),
-          savingsGoalId: 8,
+          savingsGoalId: '8',
         ),
       ];
     await _pumpDashboard(tester, store);

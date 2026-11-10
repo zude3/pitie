@@ -44,12 +44,14 @@ class SqliteFinanceRepository implements FinanceRepository {
   @override
   Future<void> refresh() async {
     final transactions = await _database.getTransactions();
-    final debts = (await _database.getDebts()).map(DebtModel.fromMap).toList();
+    final debts = (await _database.getDebts())
+        .map(DebtModel.fromLegacyMap)
+        .toList();
     final savingsGoals = (await _database.getSavingsGoals())
-        .map(SavingsGoalModel.fromMap)
+        .map(SavingsGoalModel.fromLegacyMap)
         .toList();
     final financialActivities = (await _database.getFinancialActivities())
-        .map(FinancialActivityModel.fromMap)
+        .map(FinancialActivityModel.fromLegacyMap)
         .toList();
 
     _transactions.add(transactions);
@@ -71,8 +73,8 @@ class SqliteFinanceRepository implements FinanceRepository {
   }
 
   @override
-  Future<void> deleteTransaction(int id) async {
-    await _database.deleteTransaction(id);
+  Future<void> deleteTransaction(String id) async {
+    await _database.deleteTransaction(int.parse(id));
     await refresh();
   }
 
@@ -82,43 +84,43 @@ class SqliteFinanceRepository implements FinanceRepository {
     TransactionModel? openingTransaction,
   }) async {
     await _database.insertDebt(
-      debt.toMap(),
-      openingTransaction: openingTransaction?.toMap(),
+      debt.toLegacyMap(),
+      openingTransaction: openingTransaction?.toLegacyMap(),
     );
     await refresh();
   }
 
   @override
-  Future<bool> repayDebt(int id, DateTime paidAt) async {
-    final updated = await _database.repayDebt(id, paidAt);
+  Future<bool> repayDebt(String id, DateTime paidAt) async {
+    final updated = await _database.repayDebt(int.parse(id), paidAt);
     if (updated) await refresh();
     return updated;
   }
 
   @override
   Future<void> addSavingsGoal(SavingsGoalModel goal) async {
-    await _database.insertSavingsGoal(goal.toMap());
+    await _database.insertSavingsGoal(goal.toLegacyMap());
     await refresh();
   }
 
   @override
   Future<void> recordSavingsDeposit(
-    int goalId,
+    String goalId,
     double amount,
     DateTime date,
   ) async {
-    await _database.recordSavingsDeposit(goalId, amount, date);
+    await _database.recordSavingsDeposit(int.parse(goalId), amount, date);
     await refresh();
   }
 
   @override
   Future<void> recordSavingsUse(
-    int goalId,
+    String goalId,
     double amount,
     String category,
     DateTime date,
   ) async {
-    await _database.recordSavingsUse(goalId, amount, category, date);
+    await _database.recordSavingsUse(int.parse(goalId), amount, category, date);
     await refresh();
   }
 

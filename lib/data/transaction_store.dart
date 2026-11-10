@@ -60,7 +60,7 @@ class TransactionStore extends ChangeNotifier {
     await _repository.updateTransaction(transaction);
   }
 
-  Future<void> remove(int id) async {
+  Future<void> remove(String id) async {
     _listenToRepository();
     await _repository.deleteTransaction(id);
   }

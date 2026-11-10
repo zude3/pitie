@@ -13,13 +13,17 @@ abstract class FinanceRepository {
   Future<void> refresh();
   Future<void> addTransaction(TransactionModel transaction);
   Future<void> updateTransaction(TransactionModel transaction);
-  Future<void> deleteTransaction(int id);
+  Future<void> deleteTransaction(String id);
   Future<void> addDebt(DebtModel debt, {TransactionModel? openingTransaction});
-  Future<bool> repayDebt(int id, DateTime paidAt);
+  Future<bool> repayDebt(String id, DateTime paidAt);
   Future<void> addSavingsGoal(SavingsGoalModel goal);
-  Future<void> recordSavingsDeposit(int goalId, double amount, DateTime date);
+  Future<void> recordSavingsDeposit(
+    String goalId,
+    double amount,
+    DateTime date,
+  );
   Future<void> recordSavingsUse(
-    int goalId,
+    String goalId,
     double amount,
     String category,
     DateTime date,

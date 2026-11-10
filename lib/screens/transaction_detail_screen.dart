@@ -3,8 +3,10 @@ import 'package:flutter/material.dart';
 import '../data/transaction_store.dart';
 import '../models/category_model.dart';
 import '../models/transaction_model.dart';
+import '../utils/currency_formatter.dart';
 import '../widgets/transaction_item.dart';
 import 'add_transaction_screen.dart';
+import 'savings_activity_form_screen.dart';
 
 const _ink = Color(0xFF111631);
 const _muted = Color(0xFF8B91A4);
@@ -17,34 +19,51 @@ class TransactionDetailScreen extends StatelessWidget {
   const TransactionDetailScreen({required this.transaction, super.key});
   final TransactionModel transaction;
 
-  Future<void> delete(BuildContext context) async {
+  Future<void> delete(
+    BuildContext context, {
+    required TransactionModel current,
+    bool savingsActivity = false,
+  }) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Delete transaction?'),
-        content: const Text(
-          'This transaction will be removed from your records.',
+        title: Text(savingsActivity ? 'Hapus aktivitas tabungan?' : 'Hapus transaksi?'),
+        content: Text(
+          savingsActivity
+              ? 'Saldo target dan transaksi terkait akan disesuaikan bersama.'
+              : 'Transaksi ini akan dihapus dari catatan Anda.',
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
+            child: const Text('Batal'),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Delete'),
+            child: const Text('Hapus'),
           ),
         ],
       ),
     );
-    if (confirmed == true && context.mounted && transaction.id != null) {
+    if (confirmed == true && context.mounted && current.id != null) {
       try {
-        await PitieScope.of(context).remove(transaction.id!);
+        final store = PitieScope.of(context);
+        if (savingsActivity) {
+          await store.removeSavingsActivity(current);
+        } else {
+          await store.remove(current.id!);
+        }
         if (context.mounted) Navigator.pop(context);
       } catch (_) {
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Transaksi gagal dihapus.')),
+            SnackBar(
+              content: Text(
+                savingsActivity
+                    ? 'Aktivitas tidak dapat dihapus; periksa saldo tabungan yang tersisa.'
+                    : 'Transaksi gagal dihapus.',
+              ),
+            ),
           );
         }
       }
@@ -59,7 +78,8 @@ class TransactionDetailScreen extends StatelessWidget {
       orElse: () => transaction,
     );
     final isIncome = current.type == TransactionType.income;
-    final isLinked = current.debtId != null || current.savingsGoalId != null;
+    final isDebtLinked = current.debtId != null;
+    final isSavingsActivity = current.savingsGoalId != null;
     final accent = isIncome ? _income : _expense;
     final time = current.createdAt ?? current.date;
 
@@ -85,7 +105,7 @@ class TransactionDetailScreen extends StatelessWidget {
           Column(
             children: [
               Text(
-                '${isIncome ? '+' : '-'}\$${formatMoney(current.amount)}',
+                '${isIncome ? '+' : '-'}${formatRupiah(current.amount)}',
                 style: TextStyle(
                   color: accent,
                   fontSize: 44,
@@ -214,7 +234,7 @@ class TransactionDetailScreen extends StatelessWidget {
       ),
       bottomNavigationBar: SafeArea(
         minimum: const EdgeInsets.fromLTRB(24, 12, 24, 24),
-        child: isLinked
+        child: isDebtLinked
             ? const Padding(
                 padding: EdgeInsets.symmetric(vertical: 12),
                 child: Text(
@@ -230,8 +250,9 @@ class TransactionDetailScreen extends StatelessWidget {
                       onPressed: () => Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (_) =>
-                              EditTransactionScreen(transaction: current),
+                          builder: (_) => isSavingsActivity
+                              ? SavingsActivityFormScreen(transaction: current)
+                              : EditTransactionScreen(transaction: current),
                         ),
                       ),
                       style: OutlinedButton.styleFrom(
@@ -246,13 +267,19 @@ class TransactionDetailScreen extends StatelessWidget {
                           fontWeight: FontWeight.w600,
                         ),
                       ),
-                      child: const Text('Edit'),
+                      child: Text(
+                        isSavingsActivity ? 'Edit aktivitas' : 'Edit',
+                      ),
                     ),
                   ),
                   const SizedBox(width: 16),
                   Expanded(
                     child: FilledButton(
-                      onPressed: () => delete(context),
+                      onPressed: () => delete(
+                        context,
+                        current: current,
+                        savingsActivity: isSavingsActivity,
+                      ),
                       style: FilledButton.styleFrom(
                         backgroundColor: _expense,
                         foregroundColor: Colors.white,

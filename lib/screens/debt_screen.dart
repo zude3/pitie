@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../data/transaction_store.dart';
 import '../models/debt_model.dart';
+import '../utils/currency_formatter.dart';
 import 'transaction_detail_screen.dart';
 
 enum _DebtPeriod { all, today, thisWeek, thisMonth }
@@ -207,13 +208,17 @@ class DebtDetailScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final store = PitieScope.of(context);
+    final current = store.debts.firstWhere(
+      (item) => item.id == debt.id,
+      orElse: () => debt,
+    );
     final history =
         store.transactions
-            .where((transaction) => transaction.debtId == debt.id)
+            .where((transaction) => transaction.debtId == current.id)
             .toList()
           ..sort((first, second) => second.date.compareTo(first.date));
     return Scaffold(
-      appBar: AppBar(title: Text(debt.type.label)),
+      appBar: AppBar(title: Text(current.type.label)),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(24, 12, 24, 32),
         children: [
@@ -228,26 +233,26 @@ class DebtDetailScreen extends StatelessWidget {
               children: [
                 Expanded(
                   child: Text(
-                    debt.recipient,
+                    current.recipient,
                     style: const TextStyle(fontWeight: FontWeight.w800),
                   ),
                 ),
-                Text('\$${debt.amount.toStringAsFixed(2)}'),
+                Text(formatRupiah(current.amount)),
               ],
             ),
           ),
           const SizedBox(height: 14),
-          _DebtDetailRow(label: 'Penerima', value: debt.recipient),
-          _DebtDetailRow(label: 'Tanggal mulai', value: _formatDate(debt.date)),
+          _DebtDetailRow(label: 'Penerima', value: current.recipient),
+          _DebtDetailRow(label: 'Tanggal mulai', value: _formatDate(current.date)),
           _DebtDetailRow(
             label: 'Tenggat',
-            value: debt.dueDate == null
+            value: current.dueDate == null
                 ? 'Tidak ditentukan'
-                : _formatDate(debt.dueDate!),
+                : _formatDate(current.dueDate!),
           ),
-          _DebtDetailRow(label: 'Status', value: debt.status),
-          if (debt.note.isNotEmpty)
-            _DebtDetailRow(label: 'Catatan', value: debt.note),
+          _DebtDetailRow(label: 'Status', value: current.status),
+          if (current.note.isNotEmpty)
+            _DebtDetailRow(label: 'Catatan', value: current.note),
           const SizedBox(height: 18),
           const Text(
             'Riwayat transaksi',
@@ -264,7 +269,7 @@ class DebtDetailScreen extends StatelessWidget {
               contentPadding: EdgeInsets.zero,
               title: Text(transaction.description),
               subtitle: Text(_formatDate(transaction.date)),
-              trailing: Text('\$${transaction.amount.toStringAsFixed(2)}'),
+              trailing: Text(formatRupiah(transaction.amount)),
               onTap: () => Navigator.push(
                 context,
                 MaterialPageRoute(
@@ -276,7 +281,69 @@ class DebtDetailScreen extends StatelessWidget {
           ),
         ],
       ),
+      bottomNavigationBar: SafeArea(
+        minimum: const EdgeInsets.fromLTRB(24, 12, 24, 24),
+        child: Row(
+          children: [
+            Expanded(
+              child: OutlinedButton(
+                onPressed: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => AddDebtScreen(debt: current),
+                  ),
+                ),
+                child: const Text('Edit'),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: FilledButton(
+                onPressed: () => _confirmDeleteDebt(context, store, current),
+                child: const Text('Hapus'),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
+  }
+}
+
+Future<void> _confirmDeleteDebt(
+  BuildContext context,
+  TransactionStore store,
+  DebtModel debt,
+) async {
+  final confirmed = await showDialog<bool>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: Text('Hapus ${debt.type.label.toLowerCase()}?'),
+      content: const Text(
+        'Transaksi dan aktivitas yang terkait juga akan dihapus; saldo akun akan diperbarui.',
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context, false),
+          child: const Text('Batal'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.pop(context, true),
+          child: const Text('Hapus'),
+        ),
+      ],
+    ),
+  );
+  if (confirmed != true || !context.mounted) return;
+  try {
+    await store.removeDebt(debt);
+    if (context.mounted) Navigator.pop(context);
+  } catch (_) {
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Catatan gagal dihapus.')),
+      );
+    }
   }
 }
 
@@ -313,7 +380,9 @@ Future<void> _confirmClear(BuildContext context, TransactionStore store) async {
 }
 
 class AddDebtScreen extends StatefulWidget {
-  const AddDebtScreen({super.key});
+  const AddDebtScreen({this.debt, super.key});
+
+  final DebtModel? debt;
 
   @override
   State<AddDebtScreen> createState() => _AddDebtScreenState();
@@ -328,6 +397,19 @@ class _AddDebtScreenState extends State<AddDebtScreen> {
   DateTime _date = DateTime.now();
   DateTime? _dueDate;
   bool _saving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final debt = widget.debt;
+    if (debt == null) return;
+    _amountController.text = debt.amount.toStringAsFixed(0);
+    _recipientController.text = debt.recipient;
+    _noteController.text = debt.note;
+    _type = debt.type;
+    _date = debt.date;
+    _dueDate = debt.dueDate;
+  }
 
   @override
   void dispose() {
@@ -362,18 +444,25 @@ class _AddDebtScreenState extends State<AddDebtScreen> {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _saving = true);
     try {
-      await PitieScope.of(context).addDebt(
-        DebtModel(
-          amount: double.parse(_amountController.text.trim()),
-          recipient: _recipientController.text.trim(),
-          category: 'Pribadi',
-          date: _date,
-          note: _noteController.text.trim(),
-          isPaid: false,
-          dueDate: _dueDate,
-          type: _type,
-        ),
+      final previous = widget.debt;
+      final updated = DebtModel(
+        id: previous?.id,
+        amount: double.parse(_amountController.text.trim()),
+        recipient: _recipientController.text.trim(),
+        category: previous?.category ?? 'Pribadi',
+        date: _date,
+        note: _noteController.text.trim(),
+        isPaid: previous?.isPaid ?? false,
+        dueDate: _dueDate,
+        paidAt: previous?.paidAt,
+        type: _type,
       );
+      final store = PitieScope.of(context);
+      if (previous == null) {
+        await store.addDebt(updated);
+      } else {
+        await store.updateDebt(updated);
+      }
       if (mounted) Navigator.pop(context);
     } catch (_) {
       if (mounted) {
@@ -387,7 +476,9 @@ class _AddDebtScreenState extends State<AddDebtScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('Tambah hutang')),
+    appBar: AppBar(
+      title: Text(widget.debt == null ? 'Tambah hutang' : 'Edit catatan'),
+    ),
     body: Form(
       key: _formKey,
       child: ListView(
@@ -398,7 +489,7 @@ class _AddDebtScreenState extends State<AddDebtScreen> {
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
             decoration: const InputDecoration(
               labelText: 'Nominal',
-              prefixText: '\$ ',
+              prefixText: 'Rp ',
               border: OutlineInputBorder(),
             ),
             validator: (value) {
@@ -485,7 +576,13 @@ class _AddDebtScreenState extends State<AddDebtScreen> {
           const SizedBox(height: 22),
           FilledButton(
             onPressed: _saving ? null : _save,
-            child: Text(_saving ? 'Menyimpan...' : 'Simpan hutang'),
+            child: Text(
+              _saving
+                  ? 'Menyimpan...'
+                  : widget.debt == null
+                  ? 'Simpan hutang'
+                  : 'Simpan perubahan',
+            ),
           ),
         ],
       ),
@@ -531,7 +628,7 @@ class _DebtSummary extends StatelessWidget {
                 style: TextStyle(color: Color(0xFF8B91A4), fontSize: 12),
               ),
               Text(
-                '\$${total.toStringAsFixed(2)}',
+                formatRupiah(total),
                 style: const TextStyle(
                   color: Color(0xFF111631),
                   fontSize: 20,
@@ -588,7 +685,7 @@ class _DebtItem extends StatelessWidget {
                 ),
               ),
               Text(
-                '\$${debt.amount.toStringAsFixed(2)}',
+                formatRupiah(debt.amount),
                 style: TextStyle(
                   color: debt.isPaid
                       ? const Color(0xFF8B91A4)

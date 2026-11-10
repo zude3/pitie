@@ -4,6 +4,7 @@ import '../data/transaction_store.dart';
 import '../models/category_model.dart';
 import '../models/savings_goal_model.dart';
 import '../models/transaction_model.dart';
+import '../utils/currency_formatter.dart';
 import 'transaction_detail_screen.dart';
 
 class SavingsScreen extends StatelessWidget {
@@ -105,7 +106,9 @@ class SavingsScreen extends StatelessWidget {
 }
 
 class AddSavingsGoalScreen extends StatefulWidget {
-  const AddSavingsGoalScreen({super.key});
+  const AddSavingsGoalScreen({this.goal, super.key});
+
+  final SavingsGoalModel? goal;
 
   @override
   State<AddSavingsGoalScreen> createState() => _AddSavingsGoalScreenState();
@@ -118,6 +121,15 @@ class _AddSavingsGoalScreenState extends State<AddSavingsGoalScreen> {
   bool _saving = false;
 
   @override
+  void initState() {
+    super.initState();
+    final goal = widget.goal;
+    if (goal == null) return;
+    _nameController.text = goal.name;
+    _targetController.text = goal.targetAmount.toStringAsFixed(0);
+  }
+
+  @override
   void dispose() {
     _nameController.dispose();
     _targetController.dispose();
@@ -128,14 +140,20 @@ class _AddSavingsGoalScreenState extends State<AddSavingsGoalScreen> {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _saving = true);
     try {
-      await PitieScope.of(context).addSavingsGoal(
-        SavingsGoalModel(
-          name: _nameController.text.trim(),
-          targetAmount: double.parse(_targetController.text.trim()),
-          savedAmount: 0,
-          createdAt: DateTime.now(),
-        ),
+      final previous = widget.goal;
+      final updated = SavingsGoalModel(
+        id: previous?.id,
+        name: _nameController.text.trim(),
+        targetAmount: double.parse(_targetController.text.trim()),
+        savedAmount: previous?.savedAmount ?? 0,
+        createdAt: previous?.createdAt ?? DateTime.now(),
       );
+      final store = PitieScope.of(context);
+      if (previous == null) {
+        await store.addSavingsGoal(updated);
+      } else {
+        await store.updateSavingsGoal(updated);
+      }
       if (mounted) Navigator.pop(context);
     } catch (_) {
       if (mounted) {
@@ -149,7 +167,11 @@ class _AddSavingsGoalScreenState extends State<AddSavingsGoalScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('Target tabungan baru')),
+    appBar: AppBar(
+      title: Text(
+        widget.goal == null ? 'Target tabungan baru' : 'Edit target tabungan',
+      ),
+    ),
     body: Form(
       key: _formKey,
       child: ListView(
@@ -172,7 +194,7 @@ class _AddSavingsGoalScreenState extends State<AddSavingsGoalScreen> {
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
             decoration: const InputDecoration(
               labelText: 'Nominal target',
-              prefixText: '\$ ',
+              prefixText: 'Rp ',
               border: OutlineInputBorder(),
             ),
             validator: (value) {
@@ -185,7 +207,13 @@ class _AddSavingsGoalScreenState extends State<AddSavingsGoalScreen> {
           const SizedBox(height: 22),
           FilledButton(
             onPressed: _saving ? null : _save,
-            child: Text(_saving ? 'Menyimpan...' : 'Buat target'),
+            child: Text(
+              _saving
+                  ? 'Menyimpan...'
+                  : widget.goal == null
+                  ? 'Buat target'
+                  : 'Simpan perubahan',
+            ),
           ),
         ],
       ),
@@ -240,8 +268,8 @@ class _AddSavingsAmountScreenState extends State<AddSavingsAmountScreen> {
         padding: const EdgeInsets.all(24),
         children: [
           Text(
-            'Terkumpul \$${widget.goal.savedAmount.toStringAsFixed(2)} dari '
-            '\$${widget.goal.targetAmount.toStringAsFixed(2)}',
+            'Terkumpul ${formatRupiah(widget.goal.savedAmount)} dari '
+            '${formatRupiah(widget.goal.targetAmount)}',
             style: const TextStyle(color: Color(0xFF687183), fontSize: 12),
           ),
           const SizedBox(height: 18),
@@ -250,7 +278,7 @@ class _AddSavingsAmountScreenState extends State<AddSavingsAmountScreen> {
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
             decoration: const InputDecoration(
               labelText: 'Nominal setoran',
-              prefixText: '\$ ',
+              prefixText: 'Rp ',
               border: OutlineInputBorder(),
             ),
             validator: (value) {
@@ -298,7 +326,7 @@ class SavingsGoalDetailScreen extends StatelessWidget {
           _SavingsSummary(totalSaved: current.savedAmount, goals: 1),
           const SizedBox(height: 14),
           Text(
-            'Target \$${current.targetAmount.toStringAsFixed(2)} · ${(progress * 100).round()}%',
+            'Target ${formatRupiah(current.targetAmount)} · ${(progress * 100).round()}%',
             style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 8),
@@ -334,7 +362,70 @@ class SavingsGoalDetailScreen extends StatelessWidget {
           ),
         ],
       ),
+      bottomNavigationBar: SafeArea(
+        minimum: const EdgeInsets.fromLTRB(24, 12, 24, 24),
+        child: Row(
+          children: [
+            Expanded(
+              child: OutlinedButton(
+                onPressed: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => AddSavingsGoalScreen(goal: current),
+                  ),
+                ),
+                child: const Text('Edit target'),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: FilledButton(
+                onPressed: () =>
+                    _confirmDeleteSavingsGoal(context, store, current),
+                child: const Text('Hapus target'),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
+  }
+}
+
+Future<void> _confirmDeleteSavingsGoal(
+  BuildContext context,
+  TransactionStore store,
+  SavingsGoalModel goal,
+) async {
+  final confirmed = await showDialog<bool>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: const Text('Hapus target tabungan?'),
+      content: Text(
+        'Sisa ${formatRupiah(goal.savedAmount)} akan dikembalikan ke saldo akun. Riwayat transaksi tetap disimpan.',
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context, false),
+          child: const Text('Batal'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.pop(context, true),
+          child: const Text('Hapus target'),
+        ),
+      ],
+    ),
+  );
+  if (confirmed != true || !context.mounted) return;
+  try {
+    await store.removeSavingsGoal(goal);
+    if (context.mounted) Navigator.pop(context);
+  } catch (_) {
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Target tabungan gagal dihapus.')),
+      );
+    }
   }
 }
 
@@ -437,7 +528,7 @@ class _UseSavingsScreenState extends State<UseSavingsScreen> {
                           (goal) => DropdownMenuItem(
                             value: goal.id,
                             child: Text(
-                              '${goal.name} · \$${goal.savedAmount.toStringAsFixed(2)}',
+                              '${goal.name} · ${formatRupiah(goal.savedAmount)}',
                             ),
                           ),
                         )
@@ -454,7 +545,7 @@ class _UseSavingsScreenState extends State<UseSavingsScreen> {
                     ),
                     decoration: const InputDecoration(
                       labelText: 'Nominal',
-                      prefixText: '\$ ',
+                      prefixText: 'Rp ',
                       border: OutlineInputBorder(),
                     ),
                     validator: (value) {
@@ -543,7 +634,7 @@ class _SavingsSummary extends StatelessWidget {
                 style: TextStyle(color: Color(0xFF8B91A4), fontSize: 12),
               ),
               Text(
-                '\$${totalSaved.toStringAsFixed(2)}',
+                formatRupiah(totalSaved),
                 style: const TextStyle(
                   color: Color(0xFF111631),
                   fontSize: 20,
@@ -640,7 +731,7 @@ class _SavingsGoalCard extends StatelessWidget {
             Row(
               children: [
                 Text(
-                  '\$${goal.savedAmount.toStringAsFixed(2)}',
+                  formatRupiah(goal.savedAmount),
                   style: const TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w700,
@@ -648,7 +739,7 @@ class _SavingsGoalCard extends StatelessWidget {
                 ),
                 const Spacer(),
                 Text(
-                  'Target \$${goal.targetAmount.toStringAsFixed(2)}',
+                  'Target ${formatRupiah(goal.targetAmount)}',
                   style: const TextStyle(
                     color: Color(0xFF8B91A4),
                     fontSize: 12,
@@ -699,7 +790,7 @@ class _SavingsActivityItem extends StatelessWidget {
         style: const TextStyle(fontSize: 10),
       ),
       trailing: Text(
-        '\$${transaction.amount.toStringAsFixed(2)}',
+        formatRupiah(transaction.amount),
         style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700),
       ),
       onTap: onTap,

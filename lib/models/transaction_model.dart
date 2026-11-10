@@ -19,6 +19,7 @@ class TransactionModel {
     this.account = TransactionAccount.main,
     this.debtId,
     this.savingsGoalId,
+    this.financialActivityId,
   });
 
   String? id;
@@ -31,6 +32,7 @@ class TransactionModel {
   TransactionAccount account;
   String? debtId;
   String? savingsGoalId;
+  String? financialActivityId;
 
   IconData get icon => categoryFor(category).icon;
 
@@ -61,6 +63,7 @@ class TransactionModel {
       },
       debtId: map['debtId'] as String?,
       savingsGoalId: map['savingsGoalId'] as String?,
+      financialActivityId: map['financialActivityId'] as String?,
     );
   }
 
@@ -74,6 +77,7 @@ class TransactionModel {
     'account': account.name,
     'debtId': debtId,
     'savingsGoalId': savingsGoalId,
+    'financialActivityId': financialActivityId,
   };
 
   factory TransactionModel.fromLegacyMap(Map<String, Object?> map) {
@@ -99,6 +103,7 @@ class TransactionModel {
       },
       debtId: map['debt_id']?.toString(),
       savingsGoalId: map['savings_goal_id']?.toString(),
+      financialActivityId: map['financial_activity_id']?.toString(),
     );
   }
 
@@ -115,6 +120,9 @@ class TransactionModel {
       'savings_goal_id': savingsGoalId == null
           ? null
           : int.parse(savingsGoalId!),
+      'financial_activity_id': financialActivityId == null
+          ? null
+          : int.parse(financialActivityId!),
     };
     if (id != null) map['id'] = int.parse(id!);
     return map;

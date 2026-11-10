@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../utils/currency_formatter.dart';
+
 class WeeklyExpenseChart extends StatelessWidget {
   const WeeklyExpenseChart({required this.values, super.key});
 
@@ -88,9 +90,7 @@ class _WeeklyExpenseChartPainter extends CustomPainter {
   }
 
   String _formatAmount(double amount) {
-    if (amount >= 1000000) return '\$${(amount / 1000000).toStringAsFixed(1)}m';
-    if (amount >= 1000) return '\$${(amount / 1000).toStringAsFixed(1)}k';
-    return '\$${amount.toStringAsFixed(amount.truncateToDouble() == amount ? 0 : 1)}';
+    return formatRupiahCompact(amount);
   }
 
   @override

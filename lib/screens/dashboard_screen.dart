@@ -6,6 +6,7 @@ import '../models/debt_model.dart';
 import '../models/savings_goal_model.dart';
 import '../models/transaction_model.dart';
 import '../services/auth_service.dart';
+import '../utils/currency_formatter.dart';
 import '../widgets/balance_card.dart';
 import 'add_transaction_screen.dart';
 import 'debt_screen.dart';
@@ -452,7 +453,7 @@ class _HomeActivityItem extends StatelessWidget {
           SizedBox(
             width: 100,
             child: Text(
-              '${activity.isCredit ? '+' : '-'}\$${activity.amount.toStringAsFixed(2)}',
+              '${activity.isCredit ? '+' : '-'}${formatRupiah(activity.amount)}',
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               textAlign: TextAlign.end,
@@ -516,7 +517,7 @@ class _HomeSavingsBalance extends StatelessWidget {
         ),
         const Spacer(),
         Text(
-          visible ? '\$${amount.toStringAsFixed(2)}' : '\$ -',
+          visible ? formatRupiah(amount) : 'Rp -',
           style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
         ),
       ],
@@ -570,7 +571,7 @@ class _HomeDebtItem extends StatelessWidget {
               ),
             ),
             Text(
-              '\$${debt.amount.toStringAsFixed(2)}',
+              formatRupiah(debt.amount),
               style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
             ),
           ],
@@ -637,7 +638,7 @@ class _HomeSavingsItem extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Text(
-                  '\$${goal.savedAmount.toStringAsFixed(0)} / \$${goal.targetAmount.toStringAsFixed(0)}',
+                  '${formatRupiah(goal.savedAmount)} / ${formatRupiah(goal.targetAmount)}',
                   style: const TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w700,
@@ -747,7 +748,7 @@ class _SummaryCard extends StatelessWidget {
               ),
             ),
             Text(
-              '\$${amount.toStringAsFixed(2)}',
+              formatRupiah(amount),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(

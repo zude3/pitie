@@ -66,6 +66,7 @@ class TransactionStore extends ChangeNotifier {
   }
 
   Future<void> addDebt(DebtModel debt) async {
+    _validateDebt(debt);
     _listenToRepository();
     final openingTransaction = switch (debt.type) {
       DebtType.loan => TransactionModel(
@@ -87,15 +88,43 @@ class TransactionStore extends ChangeNotifier {
     await _repository.addDebt(debt, openingTransaction: openingTransaction);
   }
 
-  Future<void> repayDebt(DebtModel debt) async {
+  Future<void> updateDebt(DebtModel debt) async {
+    if (debt.id == null) throw ArgumentError('Debt id is required.');
+    _validateDebt(debt);
+    _listenToRepository();
+    await _repository.updateDebt(debt);
+  }
+
+  Future<void> removeDebt(DebtModel debt) async {
     if (debt.id == null) throw ArgumentError('Debt id is required.');
     _listenToRepository();
-    await _repository.repayDebt(debt.id!, DateTime.now());
+    await _repository.deleteDebt(debt);
+  }
+
+  Future<bool> repayDebt(DebtModel debt) async {
+    if (debt.id == null) throw ArgumentError('Debt id is required.');
+    if (debt.isPaid) return false;
+    _listenToRepository();
+    return _repository.repayDebt(debt, DateTime.now());
   }
 
   Future<void> addSavingsGoal(SavingsGoalModel goal) async {
+    _validateSavingsGoal(goal);
     _listenToRepository();
     await _repository.addSavingsGoal(goal);
+  }
+
+  Future<void> updateSavingsGoal(SavingsGoalModel goal) async {
+    if (goal.id == null) throw ArgumentError('Savings goal id is required.');
+    _validateSavingsGoal(goal);
+    _listenToRepository();
+    await _repository.updateSavingsGoal(goal);
+  }
+
+  Future<void> removeSavingsGoal(SavingsGoalModel goal) async {
+    if (goal.id == null) throw ArgumentError('Savings goal id is required.');
+    _listenToRepository();
+    await _repository.deleteSavingsGoal(goal);
   }
 
   Future<void> addSavingsAmount(SavingsGoalModel goal, double amount) async {
@@ -104,7 +133,7 @@ class TransactionStore extends ChangeNotifier {
       throw ArgumentError('Savings deposit must be greater than zero.');
     }
     _listenToRepository();
-    await _repository.recordSavingsDeposit(goal.id!, amount, DateTime.now());
+    await _repository.recordSavingsDeposit(goal, amount, DateTime.now());
   }
 
   Future<void> useSavings(
@@ -121,7 +150,50 @@ class TransactionStore extends ChangeNotifier {
       throw ArgumentError('Savings use category is required.');
     }
     _listenToRepository();
-    await _repository.recordSavingsUse(goal.id!, amount, category.trim(), date);
+    await _repository.recordSavingsUse(goal, amount, category.trim(), date);
+  }
+
+  Future<void> updateSavingsActivity(TransactionModel transaction) async {
+    if (transaction.id == null) {
+      throw ArgumentError('Savings transaction id is required.');
+    }
+    if (!transaction.amount.isFinite || transaction.amount <= 0) {
+      throw ArgumentError('Savings activity amount must be greater than zero.');
+    }
+    if (transaction.category.trim().isEmpty) {
+      throw ArgumentError('Savings activity category is required.');
+    }
+    _listenToRepository();
+    await _repository.updateSavingsActivity(transaction);
+  }
+
+  Future<void> removeSavingsActivity(TransactionModel transaction) async {
+    if (transaction.id == null) {
+      throw ArgumentError('Savings transaction id is required.');
+    }
+    _listenToRepository();
+    await _repository.deleteSavingsActivity(transaction);
+  }
+
+  void _validateDebt(DebtModel debt) {
+    if (!debt.amount.isFinite || debt.amount <= 0) {
+      throw ArgumentError('Debt amount must be greater than zero.');
+    }
+    if (debt.recipient.trim().isEmpty) {
+      throw ArgumentError('Debt recipient is required.');
+    }
+  }
+
+  void _validateSavingsGoal(SavingsGoalModel goal) {
+    if (goal.name.trim().isEmpty) {
+      throw ArgumentError('Savings goal name is required.');
+    }
+    if (!goal.targetAmount.isFinite || goal.targetAmount <= 0) {
+      throw ArgumentError('Savings target must be greater than zero.');
+    }
+    if (!goal.savedAmount.isFinite || goal.savedAmount < 0) {
+      throw ArgumentError('Savings balance cannot be negative.');
+    }
   }
 
   Future<void> clearDebts() async {

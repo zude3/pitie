@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../data/transaction_store.dart';
 import '../models/transaction_model.dart';
+import '../utils/currency_formatter.dart';
 import '../widgets/weekly_expense_chart.dart';
 
 enum _ReportPeriod { all, today, thisWeek, thisMonth, custom }
@@ -284,7 +285,7 @@ class _ReportScreenState extends State<ReportScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                '\$${weeklyTotal.toStringAsFixed(2)}',
+                formatRupiah(weeklyTotal),
                 style: const TextStyle(
                   color: Color(0xFFFF4B4B),
                   fontSize: 16,
@@ -347,7 +348,7 @@ class _Metric extends StatelessWidget {
         const SizedBox(height: 5),
         Text(
           isCurrency
-              ? '\$${value.toStringAsFixed(2)}'
+              ? formatRupiah(value)
               : value.toInt().toString(),
           style: TextStyle(
             color: color,
@@ -379,7 +380,7 @@ class _CategoryBar extends StatelessWidget {
             Text(label, style: const TextStyle(fontSize: 12)),
             const Spacer(),
             Text(
-              '\$${amount.toStringAsFixed(2)}',
+              formatRupiah(amount),
               style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
             ),
           ],

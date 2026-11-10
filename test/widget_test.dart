@@ -147,7 +147,7 @@ void main() {
 
     await tester.tap(find.byTooltip('Sembunyikan saldo'));
     await tester.pump();
-    expect(find.text('\$ -'), findsNWidgets(2));
+    expect(find.text('Rp -'), findsNWidgets(2));
     expect(find.byTooltip('Tampilkan saldo'), findsOneWidget);
   });
 
@@ -276,8 +276,8 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Riwayat aktivitas'), findsOneWidget);
     expect(find.text('Setoran tabungan'), findsOneWidget);
-    expect(find.text('\$25.00'), findsNWidgets(2));
-    expect(find.text('\$10.00'), findsNothing);
+    expect(find.text('Rp 25'), findsNWidgets(2));
+    expect(find.text('Rp 10'), findsNothing);
   });
 
   testWidgets('savings-account usage is excluded from report expenses', (
@@ -299,8 +299,8 @@ void main() {
 
     await tester.tap(find.text('Laporan'));
     await tester.pumpAndSettle();
-    expect(find.text('\$50.00'), findsNothing);
-    expect(find.text('\$10.00'), findsWidgets);
+    expect(find.text('Rp 50'), findsNothing);
+    expect(find.text('Rp 10'), findsWidgets);
   });
 }
 

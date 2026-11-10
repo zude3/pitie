@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import '../data/transaction_store.dart';
 import '../models/category_model.dart';
 import '../models/transaction_model.dart';
+import '../utils/app_scaffold_messenger.dart';
 
 // Warna sesuai desain Add Transaction.
 const _primary = Color(0xFF5B48F5);
@@ -72,7 +73,7 @@ class _TransactionFormScreenState extends State<TransactionFormScreen> {
     type = transaction?.type ?? TransactionType.expense;
     category = transaction?.category;
     date = transaction?.date ?? DateTime.now();
-    amountController.text = transaction?.amount.toStringAsFixed(2) ?? '';
+    amountController.text = transaction?.amount.toStringAsFixed(0) ?? '';
     descriptionController.text = transaction?.description ?? '';
   }
 
@@ -105,8 +106,9 @@ class _TransactionFormScreenState extends State<TransactionFormScreen> {
         ? 'Pilih tanggal yang valid.'
         : null;
     if (validationMessage != null) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(validationMessage)));
+      appScaffoldMessengerKey.currentState?.showSnackBar(
+        SnackBar(content: Text(validationMessage)),
+      );
       return;
     }
     final transaction = TransactionModel(
@@ -121,6 +123,7 @@ class _TransactionFormScreenState extends State<TransactionFormScreen> {
       createdAt: widget.transaction?.createdAt,
     );
     final store = PitieScope.of(context);
+    final navigator = Navigator.of(context);
     setState(() => saving = true);
     try {
       if (isEditing) {
@@ -129,15 +132,15 @@ class _TransactionFormScreenState extends State<TransactionFormScreen> {
         await store.add(transaction);
       }
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        navigator.pop();
+        appScaffoldMessengerKey.currentState?.showSnackBar(
           const SnackBar(content: Text('Transaksi berhasil disimpan.')),
         );
-        Navigator.pop(context);
       }
     } catch (_) {
       if (mounted) {
         setState(() => saving = false);
-        ScaffoldMessenger.of(context).showSnackBar(
+        appScaffoldMessengerKey.currentState?.showSnackBar(
           const SnackBar(content: Text('Transaksi gagal disimpan.')),
         );
       }
@@ -343,7 +346,7 @@ class _TypeToggle extends StatelessWidget {
   }
 }
 
-/// Input nominal besar di tengah ("$0.00").
+/// Input nominal besar di tengah.
 class _AmountInput extends StatelessWidget {
   const _AmountInput({required this.controller});
   final TextEditingController controller;
@@ -373,7 +376,7 @@ class _AmountInput extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            const Text('\$', style: _style),
+            const Text('Rp', style: _style),
             const SizedBox(width: 4),
             ConstrainedBox(
               constraints: const BoxConstraints(minWidth: 110, maxWidth: 240),
@@ -391,7 +394,7 @@ class _AmountInput extends StatelessWidget {
                     ),
                   ],
                   decoration: const InputDecoration(
-                    hintText: '0.00',
+                    hintText: '0',
                     hintStyle: _style,
                     border: InputBorder.none,
                     enabledBorder: InputBorder.none,

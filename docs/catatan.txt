@@ -1,0 +1,34 @@
+perbaikan:
+batasan total nominal saldo di card karena tidak muat.
+
+daftar tes fase 4:
+1. Login dan cakupan data
+ Login dengan akun Firebase. Aplikasi membuka dashboard dan mulai memuat data.
+ Periksa Firestore: data tersimpan di users/{uid}/transactions, debts, savings_goals, dan financial_activities.
+ Logout lalu login kembali; data akun tersebut tetap muncul.
+ Jika tersedia akun kedua, login dengannya dan pastikan aplikasi mengarah ke UID akun kedua. (Pengujian ini memeriksa pemisahan store di aplikasi; pengujian aturan keamanan Firestore termasuk fase 5.)
+2. Transaksi
+ Tambah transaksi income dan expense; data muncul di daftar dan Firestore.
+ Ubah transaksi; perubahan terlihat di aplikasi dan dokumen Firestore yang sama.
+ Hapus transaksi; transaksi hilang dari daftar dan Firestore.
+ Pastikan transaksi tersimpan dengan tanggal sebagai Timestamp, serta account bernilai main atau savings.
+ Tambahkan transaksi pada tanggal yang sama; periksa urutan daftar berdasarkan tanggal terbaru lalu createdAt terbaru.
+ Coba jumlah nol/negatif dan kategori kosong; operasi harus ditolak.
+3. Utang, pinjaman, dan piutang
+ Buat pinjaman; dokumen debt dan transaksi pembuka income dibuat.
+ Buat piutang; dokumen debt dan transaksi pembuka expense dibuat.
+ Buat hutang; dokumen debt dibuat tanpa transaksi pembuka.
+ Lunasi masing-masing jenis; debt diperbarui (isPaid, paidAt), activity pelunasan dibuat, dan transaksi pelunasan memiliki jenis serta kategori yang sesuai.
+ Coba lunasi utang yang sudah lunas; tidak boleh membuat activity atau transaksi pelunasan duplikat.
+ Jalankan hapus semua utang; debts, transaksi terkait utang, dan activity pelunasan terhapus. Transaksi dan activity tabungan tidak ikut terhapus.
+4. Target dan aktivitas tabungan
+ Buat target tabungan; dokumen goal tersimpan.
+ Setor sejumlah saldo; savedAmount bertambah, activity setoran dibuat, dan transaksi expense kategori “Tabungan” masuk ke akun utama.
+ Gunakan sebagian saldo; savedAmount berkurang, activity pemakaian dibuat, dan transaksi expense masuk ke akun savings.
+ Coba gunakan lebih dari saldo tersedia; operasi ditolak dan saldo tidak menjadi negatif.
+ Coba setor nol/negatif atau gunakan kategori kosong; operasi ditolak.
+5. Listener dan sinkronisasi
+ Periksa daftar berubah setelah operasi, tanpa perlu menutup dan membuka ulang aplikasi.
+ Periksa transaksi, debt, goal, dan activity tersusun dari yang terbaru sesuai koleksinya.
+ Coba tambah data saat offline, lalu sambungkan kembali dan pastikan perubahan tersinkron ke Firestore.
+ Saat menguji offline, perhatikan bahwa operasi yang menunggu konfirmasi server dapat menampilkan timeout/error setelah sekitar 15 detik; pastikan data tetap tersinkron setelah koneksi pulih.

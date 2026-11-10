@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "814664349351",
+    "project_id": "pitie-wowok123",
+    "storage_bucket": "pitie-wowok123.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:814664349351:android:7927210cf90e6ac697cd82",
+        "android_client_info": {
+          "package_name": "com.example.pitie"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBzBgwr6g71XErqnG7QGjwcSs6FAQNqalc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -12,12 +12,12 @@ import 'package:pitie/data/transaction_store.dart';
 import 'package:pitie/models/debt_model.dart';
 import 'package:pitie/models/savings_goal_model.dart';
 import 'package:pitie/models/transaction_model.dart';
-import 'package:pitie/main.dart';
+import 'package:pitie/screens/dashboard_screen.dart';
 
 void main() {
   testWidgets('renders the Pitie dashboard', (WidgetTester tester) async {
     final store = TransactionStore();
-    await tester.pumpWidget(PitieApp(store: store));
+    await _pumpDashboard(tester, store);
 
     expect(find.text('Welcome Back,'), findsOneWidget);
     expect(find.text('Recent Transactions'), findsOneWidget);
@@ -131,7 +131,7 @@ void main() {
           date: DateTime(2026, 10, 5),
         ),
       ]);
-    await tester.pumpWidget(PitieApp(store: store));
+    await _pumpDashboard(tester, store);
 
     expect(find.text('Setoran tabungan: Mobil'), findsOneWidget);
     expect(find.text('Pelunasan hutang: Budi'), findsOneWidget);
@@ -159,7 +159,7 @@ void main() {
         _transaction('Tagihan listrik', 20),
         _transaction('Belanja mingguan', 30),
       ];
-    await tester.pumpWidget(PitieApp(store: store));
+    await _pumpDashboard(tester, store);
 
     await tester.tap(find.text('Transaksi'));
     await tester.pumpAndSettle();
@@ -182,7 +182,7 @@ void main() {
         _debt(recipient: 'Pinjaman Andi', type: DebtType.loan),
         _debt(recipient: 'Hutang Budi'),
       ];
-    await tester.pumpWidget(PitieApp(store: store));
+    await _pumpDashboard(tester, store);
 
     await tester.tap(find.text('Hutang'));
     await tester.pumpAndSettle();
@@ -211,7 +211,7 @@ void main() {
           date: today.subtract(const Duration(days: 1)),
         ),
       ];
-    await tester.pumpWidget(PitieApp(store: store));
+    await _pumpDashboard(tester, store);
 
     await tester.tap(find.text('Hutang'));
     await tester.pumpAndSettle();
@@ -227,7 +227,7 @@ void main() {
   });
 
   testWidgets('back from a non-home tab first returns to Home', (tester) async {
-    await tester.pumpWidget(PitieApp(store: TransactionStore()));
+    await _pumpDashboard(tester, TransactionStore());
     await tester.tap(find.text('Transaksi'));
     await tester.pumpAndSettle();
 
@@ -268,7 +268,7 @@ void main() {
           savingsGoalId: 8,
         ),
       ];
-    await tester.pumpWidget(PitieApp(store: store));
+    await _pumpDashboard(tester, store);
 
     await tester.tap(find.text('Tabungan'));
     await tester.pumpAndSettle();
@@ -295,13 +295,22 @@ void main() {
           account: TransactionAccount.savings,
         ),
       ];
-    await tester.pumpWidget(PitieApp(store: store));
+    await _pumpDashboard(tester, store);
 
     await tester.tap(find.text('Laporan'));
     await tester.pumpAndSettle();
     expect(find.text('\$50.00'), findsNothing);
     expect(find.text('\$10.00'), findsWidgets);
   });
+}
+
+Future<void> _pumpDashboard(WidgetTester tester, TransactionStore store) {
+  return tester.pumpWidget(
+    PitieScope(
+      notifier: store,
+      child: const MaterialApp(home: DashboardScreen()),
+    ),
+  );
 }
 
 TransactionModel _transaction(String description, double amount) =>

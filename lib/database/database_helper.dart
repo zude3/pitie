@@ -86,8 +86,8 @@ class DatabaseHelper {
   Future<int> insertTransaction(TransactionModel transaction) async {
     _validateTransaction(transaction, requireId: false);
     final database = await initDatabase();
-    final id = await database.insert('transactions', transaction.toMap());
-    transaction.id = id;
+    final id = await database.insert('transactions', transaction.toLegacyMap());
+    transaction.id = id.toString();
     return id;
   }
 
@@ -97,7 +97,7 @@ class DatabaseHelper {
       'transactions',
       orderBy: 'date DESC, created_at DESC, id DESC',
     );
-    return rows.map(TransactionModel.fromMap).toList();
+    return rows.map(TransactionModel.fromLegacyMap).toList();
   }
 
   Future<TransactionModel?> getTransactionById(int id) async {
@@ -108,7 +108,7 @@ class DatabaseHelper {
       whereArgs: [id],
       limit: 1,
     );
-    return rows.isEmpty ? null : TransactionModel.fromMap(rows.first);
+    return rows.isEmpty ? null : TransactionModel.fromLegacyMap(rows.first);
   }
 
   Future<int> updateTransaction(TransactionModel transaction) async {
@@ -116,7 +116,7 @@ class DatabaseHelper {
     final database = await initDatabase();
     return database.update(
       'transactions',
-      transaction.toMap()..remove('id'),
+      transaction.toLegacyMap()..remove('id'),
       where: 'id = ?',
       whereArgs: [transaction.id],
     );

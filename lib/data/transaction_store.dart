@@ -1,36 +1,33 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
-import '../database/database_helper.dart';
 import '../models/debt_model.dart';
 import '../models/financial_activity_model.dart';
 import '../models/savings_goal_model.dart';
 import '../models/transaction_model.dart';
+import '../repositories/finance_repository.dart';
+import '../repositories/sqlite_finance_repository.dart';
 
 class TransactionStore extends ChangeNotifier {
-  TransactionStore({DatabaseHelper? database})
-    : _database = database ?? DatabaseHelper.instance;
+  TransactionStore({FinanceRepository? repository})
+    : _repository = repository ?? SqliteFinanceRepository();
 
-  final DatabaseHelper _database;
+  final FinanceRepository _repository;
+  final List<StreamSubscription<dynamic>> _subscriptions = [];
   List<TransactionModel> transactions = [];
   List<DebtModel> debts = [];
   List<SavingsGoalModel> savingsGoals = [];
   List<FinancialActivityModel> financialActivities = [];
 
   Future<void> initialize() async {
-    await _database.initDatabase();
-    await refresh();
+    _listenToRepository();
+    await _repository.initialize();
   }
 
   Future<void> refresh() async {
-    transactions = await _database.getTransactions();
-    debts = (await _database.getDebts()).map(DebtModel.fromMap).toList();
-    savingsGoals = (await _database.getSavingsGoals())
-        .map(SavingsGoalModel.fromMap)
-        .toList();
-    financialActivities = (await _database.getFinancialActivities())
-        .map(FinancialActivityModel.fromMap)
-        .toList();
-    notifyListeners();
+    _listenToRepository();
+    await _repository.refresh();
   }
 
   double get income => _total(TransactionType.income);
@@ -54,21 +51,22 @@ class TransactionStore extends ChangeNotifier {
       .fold(0, (sum, transaction) => sum + transaction.amount);
 
   Future<void> add(TransactionModel transaction) async {
-    await _database.insertTransaction(transaction);
-    await refresh();
+    _listenToRepository();
+    await _repository.addTransaction(transaction);
   }
 
   Future<void> update(TransactionModel transaction) async {
-    await _database.updateTransaction(transaction);
-    await refresh();
+    _listenToRepository();
+    await _repository.updateTransaction(transaction);
   }
 
-  Future<void> remove(int id) async {
-    await _database.deleteTransaction(id);
-    await refresh();
+  Future<void> remove(String id) async {
+    _listenToRepository();
+    await _repository.deleteTransaction(id);
   }
 
   Future<void> addDebt(DebtModel debt) async {
+    _listenToRepository();
     final openingTransaction = switch (debt.type) {
       DebtType.loan => TransactionModel(
         type: TransactionType.income,
@@ -86,22 +84,18 @@ class TransactionStore extends ChangeNotifier {
         date: debt.date,
       ),
     };
-    await _database.insertDebt(
-      debt.toMap(),
-      openingTransaction: openingTransaction?.toMap(),
-    );
-    await refresh();
+    await _repository.addDebt(debt, openingTransaction: openingTransaction);
   }
 
   Future<void> repayDebt(DebtModel debt) async {
     if (debt.id == null) throw ArgumentError('Debt id is required.');
-    final updated = await _database.repayDebt(debt.id!, DateTime.now());
-    if (updated) await refresh();
+    _listenToRepository();
+    await _repository.repayDebt(debt.id!, DateTime.now());
   }
 
   Future<void> addSavingsGoal(SavingsGoalModel goal) async {
-    await _database.insertSavingsGoal(goal.toMap());
-    await refresh();
+    _listenToRepository();
+    await _repository.addSavingsGoal(goal);
   }
 
   Future<void> addSavingsAmount(SavingsGoalModel goal, double amount) async {
@@ -109,8 +103,8 @@ class TransactionStore extends ChangeNotifier {
     if (!amount.isFinite || amount <= 0) {
       throw ArgumentError('Savings deposit must be greater than zero.');
     }
-    await _database.recordSavingsDeposit(goal.id!, amount, DateTime.now());
-    await refresh();
+    _listenToRepository();
+    await _repository.recordSavingsDeposit(goal.id!, amount, DateTime.now());
   }
 
   Future<void> useSavings(
@@ -126,13 +120,51 @@ class TransactionStore extends ChangeNotifier {
     if (category.trim().isEmpty) {
       throw ArgumentError('Savings use category is required.');
     }
-    await _database.recordSavingsUse(goal.id!, amount, category.trim(), date);
-    await refresh();
+    _listenToRepository();
+    await _repository.recordSavingsUse(goal.id!, amount, category.trim(), date);
   }
 
   Future<void> clearDebts() async {
-    await _database.clearDebts();
-    await refresh();
+    _listenToRepository();
+    await _repository.clearDebts();
+  }
+
+  void _listenToRepository() {
+    if (_subscriptions.isNotEmpty) return;
+    _subscriptions
+      ..add(
+        _repository.watchTransactions().listen((items) {
+          transactions = items;
+          notifyListeners();
+        }),
+      )
+      ..add(
+        _repository.watchDebts().listen((items) {
+          debts = items;
+          notifyListeners();
+        }),
+      )
+      ..add(
+        _repository.watchSavingsGoals().listen((items) {
+          savingsGoals = items;
+          notifyListeners();
+        }),
+      )
+      ..add(
+        _repository.watchFinancialActivities().listen((items) {
+          financialActivities = items;
+          notifyListeners();
+        }),
+      );
+  }
+
+  @override
+  void dispose() {
+    for (final subscription in _subscriptions) {
+      unawaited(subscription.cancel());
+    }
+    _repository.dispose();
+    super.dispose();
   }
 }
 

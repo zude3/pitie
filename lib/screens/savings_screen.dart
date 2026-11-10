@@ -355,7 +355,7 @@ class _UseSavingsScreenState extends State<UseSavingsScreen> {
       )
       .map((category) => category.name)
       .toList();
-  int? _goalId;
+  String? _goalId;
   String _category = _expenseCategories.first;
   DateTime _date = DateTime.now();
   bool _initialized = false;
@@ -426,7 +426,7 @@ class _UseSavingsScreenState extends State<UseSavingsScreen> {
               child: ListView(
                 padding: const EdgeInsets.all(24),
                 children: [
-                  DropdownButtonFormField<int>(
+                  DropdownButtonFormField<String>(
                     initialValue: _goalId,
                     decoration: const InputDecoration(
                       labelText: 'Sumber tabungan',

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../models/category_model.dart';
 
@@ -20,7 +21,7 @@ class TransactionModel {
     this.savingsGoalId,
   });
 
-  int? id;
+  String? id;
   TransactionType type;
   double amount;
   String category;
@@ -28,12 +29,18 @@ class TransactionModel {
   DateTime date;
   DateTime? createdAt;
   TransactionAccount account;
-  int? debtId;
-  int? savingsGoalId;
+  String? debtId;
+  String? savingsGoalId;
 
   IconData get icon => categoryFor(category).icon;
 
-  factory TransactionModel.fromMap(Map<String, Object?> map) {
+  factory TransactionModel.fromFirestore(
+    DocumentSnapshot<Map<String, dynamic>> snapshot,
+  ) {
+    final map = snapshot.data();
+    if (map == null) {
+      throw StateError('Transaction document ${snapshot.id} has no data.');
+    }
     final typeValue = map['type'] as String?;
     final type = switch (typeValue) {
       'income' => TransactionType.income,
@@ -41,7 +48,43 @@ class TransactionModel {
       _ => throw FormatException('Invalid transaction type: $typeValue'),
     };
     return TransactionModel(
-      id: map['id'] as int?,
+      id: snapshot.id,
+      type: type,
+      amount: (map['amount'] as num).toDouble(),
+      category: map['category'] as String,
+      description: (map['description'] as String?) ?? '',
+      date: (map['date'] as Timestamp).toDate(),
+      createdAt: (map['createdAt'] as Timestamp?)?.toDate(),
+      account: switch (map['account']) {
+        'savings' => TransactionAccount.savings,
+        _ => TransactionAccount.main,
+      },
+      debtId: map['debtId'] as String?,
+      savingsGoalId: map['savingsGoalId'] as String?,
+    );
+  }
+
+  Map<String, Object?> toFirestore() => {
+    'type': type.name,
+    'amount': amount,
+    'category': category,
+    'description': description,
+    'date': Timestamp.fromDate(date),
+    'createdAt': Timestamp.fromDate(createdAt ?? DateTime.now()),
+    'account': account.name,
+    'debtId': debtId,
+    'savingsGoalId': savingsGoalId,
+  };
+
+  factory TransactionModel.fromLegacyMap(Map<String, Object?> map) {
+    final typeValue = map['type'] as String?;
+    final type = switch (typeValue) {
+      'income' => TransactionType.income,
+      'expense' => TransactionType.expense,
+      _ => throw FormatException('Invalid transaction type: $typeValue'),
+    };
+    return TransactionModel(
+      id: map['id']?.toString(),
       type: type,
       amount: (map['amount'] as num).toDouble(),
       category: map['category'] as String,
@@ -54,12 +97,12 @@ class TransactionModel {
         'savings' => TransactionAccount.savings,
         _ => TransactionAccount.main,
       },
-      debtId: map['debt_id'] as int?,
-      savingsGoalId: map['savings_goal_id'] as int?,
+      debtId: map['debt_id']?.toString(),
+      savingsGoalId: map['savings_goal_id']?.toString(),
     );
   }
 
-  Map<String, Object?> toMap() {
+  Map<String, Object?> toLegacyMap() {
     final map = <String, Object?>{
       'type': type.name,
       'amount': amount,
@@ -68,10 +111,12 @@ class TransactionModel {
       'date': date.toIso8601String(),
       'created_at': (createdAt ?? DateTime.now()).toIso8601String(),
       'account': account.name,
-      'debt_id': debtId,
-      'savings_goal_id': savingsGoalId,
+      'debt_id': debtId == null ? null : int.parse(debtId!),
+      'savings_goal_id': savingsGoalId == null
+          ? null
+          : int.parse(savingsGoalId!),
     };
-    if (id != null) map['id'] = id!;
+    if (id != null) map['id'] = int.parse(id!);
     return map;
   }
 }

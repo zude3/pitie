@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../utils/currency_formatter.dart';
+
 class BalanceCard extends StatelessWidget {
   const BalanceCard({
     required this.amount,
@@ -56,7 +58,7 @@ class BalanceCard extends StatelessWidget {
           ),
           const SizedBox(height: 2),
           Text(
-            showAmount ? '\$${amount.toStringAsFixed(2)}' : '\$ -',
+            showAmount ? formatRupiah(amount) : 'Rp -',
             style: const TextStyle(
               color: Colors.white,
               fontSize: 34,

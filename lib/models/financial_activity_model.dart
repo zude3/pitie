@@ -9,6 +9,9 @@ class FinancialActivityModel {
     required this.amount,
     required this.title,
     required this.date,
+    this.debtId,
+    this.savingsGoalId,
+    this.transactionId,
   });
 
   final String? id;
@@ -16,6 +19,9 @@ class FinancialActivityModel {
   final double amount;
   final String title;
   final DateTime date;
+  final String? debtId;
+  final String? savingsGoalId;
+  final String? transactionId;
 
   factory FinancialActivityModel.fromFirestore(
     DocumentSnapshot<Map<String, dynamic>> snapshot,
@@ -38,6 +44,9 @@ class FinancialActivityModel {
       amount: (map['amount'] as num).toDouble(),
       title: map['title'] as String,
       date: (map['date'] as Timestamp).toDate(),
+      debtId: map['debtId'] as String?,
+      savingsGoalId: map['savingsGoalId'] as String?,
+      transactionId: map['transactionId'] as String?,
     );
   }
 
@@ -50,6 +59,9 @@ class FinancialActivityModel {
     'amount': amount,
     'title': title,
     'date': Timestamp.fromDate(date),
+    'debtId': debtId,
+    'savingsGoalId': savingsGoalId,
+    'transactionId': transactionId,
   };
 
   factory FinancialActivityModel.fromLegacyMap(Map<String, Object?> map) {
@@ -67,6 +79,23 @@ class FinancialActivityModel {
       amount: (map['amount'] as num).toDouble(),
       title: map['title'] as String,
       date: DateTime.parse(map['date'] as String),
+      debtId: map['debt_id']?.toString(),
+      savingsGoalId: map['savings_goal_id']?.toString(),
+      transactionId: map['transaction_id']?.toString(),
     );
   }
+
+  Map<String, Object?> toLegacyMap() => {
+    'kind': switch (type) {
+      FinancialActivityType.debtRepayment => 'debt_repayment',
+      FinancialActivityType.savingsDeposit => 'savings_deposit',
+      FinancialActivityType.savingsUse => 'savings_use',
+    },
+    'amount': amount,
+    'title': title,
+    'date': date.toIso8601String(),
+    'debt_id': debtId == null ? null : int.parse(debtId!),
+    'savings_goal_id': savingsGoalId == null ? null : int.parse(savingsGoalId!),
+    'transaction_id': transactionId == null ? null : int.parse(transactionId!),
+  };
 }

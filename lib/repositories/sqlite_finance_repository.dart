@@ -91,7 +91,24 @@ class SqliteFinanceRepository implements FinanceRepository {
   }
 
   @override
-  Future<bool> repayDebt(String id, DateTime paidAt) async {
+  Future<void> updateDebt(DebtModel debt) async {
+    if (debt.id == null) throw ArgumentError('Debt id is required.');
+    await _database.updateDebt(debt);
+    await refresh();
+  }
+
+  @override
+  Future<void> deleteDebt(DebtModel debt) async {
+    final id = debt.id;
+    if (id == null) throw ArgumentError('Debt id is required.');
+    await _database.deleteDebt(int.parse(id));
+    await refresh();
+  }
+
+  @override
+  Future<bool> repayDebt(DebtModel debt, DateTime paidAt) async {
+    final id = debt.id;
+    if (id == null) throw ArgumentError('Debt id is required.');
     final updated = await _database.repayDebt(int.parse(id), paidAt);
     if (updated) await refresh();
     return updated;
@@ -104,23 +121,56 @@ class SqliteFinanceRepository implements FinanceRepository {
   }
 
   @override
+  Future<void> updateSavingsGoal(SavingsGoalModel goal) async {
+    if (goal.id == null) throw ArgumentError('Savings goal id is required.');
+    await _database.updateSavingsGoal(goal);
+    await refresh();
+  }
+
+  @override
+  Future<void> deleteSavingsGoal(SavingsGoalModel goal) async {
+    final id = goal.id;
+    if (id == null) throw ArgumentError('Savings goal id is required.');
+    await _database.deleteSavingsGoal(int.parse(id));
+    await refresh();
+  }
+
+  @override
   Future<void> recordSavingsDeposit(
-    String goalId,
+    SavingsGoalModel goal,
     double amount,
     DateTime date,
   ) async {
-    await _database.recordSavingsDeposit(int.parse(goalId), amount, date);
+    final id = goal.id;
+    if (id == null) throw ArgumentError('Savings goal id is required.');
+    await _database.recordSavingsDeposit(int.parse(id), amount, date);
     await refresh();
   }
 
   @override
   Future<void> recordSavingsUse(
-    String goalId,
+    SavingsGoalModel goal,
     double amount,
     String category,
     DateTime date,
   ) async {
-    await _database.recordSavingsUse(int.parse(goalId), amount, category, date);
+    final id = goal.id;
+    if (id == null) throw ArgumentError('Savings goal id is required.');
+    await _database.recordSavingsUse(int.parse(id), amount, category, date);
+    await refresh();
+  }
+
+  @override
+  Future<void> updateSavingsActivity(TransactionModel transaction) async {
+    await _database.updateSavingsActivity(transaction);
+    await refresh();
+  }
+
+  @override
+  Future<void> deleteSavingsActivity(TransactionModel transaction) async {
+    final id = transaction.id;
+    if (id == null) throw ArgumentError('Savings transaction id is required.');
+    await _database.deleteSavingsActivity(int.parse(id));
     await refresh();
   }
 

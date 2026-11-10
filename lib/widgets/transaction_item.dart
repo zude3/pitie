@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../models/category_model.dart';
 import '../models/transaction_model.dart';
+import '../utils/currency_formatter.dart';
 
 const _ink = Color(0xFF111631);
 const _muted = Color(0xFF9BA0B2);
@@ -22,16 +23,6 @@ const _monthsShort = [
   'Nov',
   'Dec',
 ];
-
-/// 1234.5 -> "1,234.50"
-String formatMoney(double value) {
-  final parts = value.abs().toStringAsFixed(2).split('.');
-  final whole = parts[0].replaceAllMapped(
-    RegExp(r'\B(?=(\d{3})+(?!\d))'),
-    (_) => ',',
-  );
-  return '$whole.${parts[1]}';
-}
 
 /// "Sep 20, 2025"
 String formatShortDate(DateTime d) =>
@@ -76,7 +67,7 @@ class TransactionItem extends StatelessWidget {
     return TransactionItem(
       title: transaction.description,
       subtitle: '${dayLabel(transaction.date)}, ${formatTime(time)}',
-      amount: formatMoney(transaction.amount),
+      amount: formatRupiah(transaction.amount),
       icon: transaction.icon,
       iconColor: categoryFor(transaction.category).color,
       isIncome: transaction.type == TransactionType.income,
@@ -139,7 +130,7 @@ class TransactionItem extends StatelessWidget {
             ),
             const SizedBox(width: 12),
             Text(
-              '${isIncome ? '+' : '-'}\$$amount',
+              '${isIncome ? '+' : '-'}$amount',
               style: TextStyle(
                 color: isIncome ? _income : _expense,
                 fontSize: 16,

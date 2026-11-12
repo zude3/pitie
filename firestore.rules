@@ -1,0 +1,132 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /users/{uid} {
+      function isOwner() {
+        return request.auth != null && request.auth.uid == uid;
+      }
+
+      function isNullableString(value) {
+        return value == null || value is string;
+      }
+
+      function hasExactFields(data, fields) {
+        return data.keys().hasAll(fields) && data.keys().hasOnly(fields);
+      }
+
+      function isValidTransaction(data) {
+        return hasExactFields(data, [
+            'type',
+            'amount',
+            'category',
+            'description',
+            'date',
+            'createdAt',
+            'account',
+            'debtId',
+            'savingsGoalId',
+            'financialActivityId'
+          ])
+          && data.amount is number
+          && data.amount > 0
+          && data.type in ['income', 'expense']
+          && data.category is string
+          && data.category.size() > 0
+          && data.description is string
+          && data.date is timestamp
+          && data.createdAt is timestamp
+          && data.account in ['main', 'savings']
+          && isNullableString(data.debtId)
+          && isNullableString(data.savingsGoalId)
+          && isNullableString(data.financialActivityId);
+      }
+
+      function isValidDebt(data) {
+        return hasExactFields(data, [
+            'amount',
+            'recipient',
+            'category',
+            'date',
+            'note',
+            'isPaid',
+            'dueDate',
+            'paidAt',
+            'type'
+          ])
+          && data.amount is number
+          && data.amount > 0
+          && data.recipient is string
+          && data.category is string
+          && data.date is timestamp
+          && data.note is string
+          && data.isPaid is bool
+          && (data.dueDate == null || data.dueDate is timestamp)
+          && (data.paidAt == null || data.paidAt is timestamp)
+          && data.type in ['loan', 'debt', 'receivable'];
+      }
+
+      function isValidSavingsGoal(data) {
+        return hasExactFields(data, [
+            'name',
+            'targetAmount',
+            'savedAmount',
+            'createdAt'
+          ])
+          && data.name is string
+          && data.targetAmount is number
+          && data.targetAmount > 0
+          && data.savedAmount is number
+          && data.savedAmount >= 0
+          && data.createdAt is timestamp;
+      }
+
+      function isValidFinancialActivity(data) {
+        return hasExactFields(data, [
+            'kind',
+            'amount',
+            'title',
+            'date',
+            'debtId',
+            'savingsGoalId',
+            'transactionId'
+          ])
+          && data.kind in [
+            'debt_repayment',
+            'savings_deposit',
+            'savings_use'
+          ]
+          && data.amount is number
+          && data.amount > 0
+          && data.title is string
+          && data.date is timestamp
+          && isNullableString(data.debtId)
+          && isNullableString(data.savingsGoalId)
+          && isNullableString(data.transactionId);
+      }
+
+      match /transactions/{transactionId} {
+        allow read, delete: if isOwner();
+        allow create, update: if isOwner()
+          && isValidTransaction(request.resource.data);
+      }
+
+      match /debts/{debtId} {
+        allow read, delete: if isOwner();
+        allow create, update: if isOwner()
+          && isValidDebt(request.resource.data);
+      }
+
+      match /savings_goals/{goalId} {
+        allow read, delete: if isOwner();
+        allow create, update: if isOwner()
+          && isValidSavingsGoal(request.resource.data);
+      }
+
+      match /financial_activities/{activityId} {
+        allow read, delete: if isOwner();
+        allow create, update: if isOwner()
+          && isValidFinancialActivity(request.resource.data);
+      }
+    }
+  }
+}
